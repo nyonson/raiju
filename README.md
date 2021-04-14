@@ -31,7 +31,18 @@ raiju btc2sat .000434
 43400
 ```
 
-# install
+# installation
+
+Binaries are available for download from [releases](https://github.com/nyonson/raiju/releases).
+
+```
+curl -OL https://github.com/nyonson/raiju/releases/download/$VERSION/raiju-$VERSION-linux-amd64.tar.gz
+tar -xvzf raiju-$VERSION-linux-amd64.tar.gz
+```
+
+Alternatively, Raiju can also be built locally.
+
+## build locally
 
 Raiju can be built and installed locally with `make`. It requires `go` on the system to be compiled. Specify a `BINDIR` to override the default.
 
