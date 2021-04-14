@@ -12,6 +12,8 @@
 
 Raiju is your friendly bitcoin lightning network helper.
 
+![build status](https://github.com/nyonson/raiju/actions/workflows/go.yml/badge.svg)
+
 # usage
 
 All of Raiju's subcommands can be listed with the global help flag.
