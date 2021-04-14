@@ -20,13 +20,13 @@ All of Raiju's subcommands can be listed with the global help flag.
 raiju -h
 ```
 
-## btc2sats
+## btc2sat
 
-Quick conversion from btc to the more popular satoshi granularity.
+Quick conversion from btc to the smaller satoshi granularity which is more popular in the lightning network tooling.
 
 ```
-raiju btc2sats .000434
-
+raiju btc2sat .000434
+43400
 ```
 
 # install

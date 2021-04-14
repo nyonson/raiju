@@ -14,6 +14,8 @@ import (
 )
 
 func main() {
+	cmdLog := log.New(os.Stderr, "raiju: ", 0)
+
 	rootFlagSet := flag.NewFlagSet("raiju", flag.ExitOnError)
 	verbose := rootFlagSet.Bool("v", false, "increase log verbosity")
 
@@ -27,7 +29,7 @@ func main() {
 			}
 
 			if *verbose {
-				log.Printf("converting %s btc to sats", args[0])
+				cmdLog.Printf("converting %s btc to sats", args[0])
 			}
 
 			btc, err := strconv.ParseFloat(args[0], 64)
@@ -52,7 +54,7 @@ func main() {
 	if err := root.ParseAndRun(context.Background(), os.Args[1:]); err != nil {
 		// no need to output redundant message
 		if err != flag.ErrHelp {
-			log.Fatalln(err)
+			cmdLog.Fatalln(err)
 		} else {
 			os.Exit(1)
 		}
