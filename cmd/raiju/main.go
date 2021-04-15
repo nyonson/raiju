@@ -13,13 +13,16 @@ import (
 	"github.com/peterbourgon/ff/v3/ffcli"
 )
 
+// version is set by build tools during linking
+var version = "undefined"
+
 func main() {
 	cmdLog := log.New(os.Stderr, "raiju: ", 0)
 
 	rootFlagSet := flag.NewFlagSet("raiju", flag.ExitOnError)
 	verbose := rootFlagSet.Bool("v", false, "increase log verbosity")
 
-	btc2sat := &ffcli.Command{
+	btc2satCmd := &ffcli.Command{
 		Name:       "btc2sat",
 		ShortUsage: "raiju btc2sat <btc>",
 		ShortHelp:  "Convert bitcoins to satoshis",
@@ -37,7 +40,21 @@ func main() {
 				return fmt.Errorf("unable to parse arg: %s", args[0])
 			}
 
-			fmt.Fprintln(os.Stdout, raiju.Btc2sat(btc))
+			raiju.PrintBtc2sat(btc)
+			return nil
+		},
+	}
+
+	versionCmd := &ffcli.Command{
+		Name:       "version",
+		ShortUsage: "raiju version",
+		ShortHelp:  "Version of raiju",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 0 {
+				return errors.New("version does not take any args")
+			}
+
+			fmt.Fprintln(os.Stdout, version)
 			return nil
 		},
 	}
@@ -45,7 +62,7 @@ func main() {
 	root := &ffcli.Command{
 		ShortUsage:  "raiju [flags] <subcommand>",
 		FlagSet:     rootFlagSet,
-		Subcommands: []*ffcli.Command{btc2sat},
+		Subcommands: []*ffcli.Command{btc2satCmd, versionCmd},
 		Exec: func(context.Context, []string) error {
 			return flag.ErrHelp
 		},

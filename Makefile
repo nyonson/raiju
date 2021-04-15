@@ -1,5 +1,6 @@
 
-BINDIR         = $(DESTDIR)/usr/bin
+BINDIR         := $(DESTDIR)/usr/bin
+VERSION        := $(shell git describe --tags)
 
 .PHONY: test
 test:
@@ -7,7 +8,7 @@ test:
 
 .PHONY: build
 build:
-	@go build -o build/raiju cmd/raiju/main.go
+	@go build -ldflags="-X main.version=${VERSION}"  -o build/raiju cmd/raiju/main.go
 
 install: test build
 	@echo "installing"
