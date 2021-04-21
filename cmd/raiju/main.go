@@ -9,6 +9,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/lightninglabs/lndclient"
+	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/nyonson/raiju"
 	"github.com/peterbourgon/ff/v3/ffcli"
 )
@@ -45,6 +47,39 @@ func main() {
 		},
 	}
 
+	spanCmd := &ffcli.Command{
+		Name:       "span",
+		ShortUsage: "raiju span <pubkey>",
+		ShortHelp:  "Span network graph from node",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 1 {
+				return errors.New("span only takes one arg")
+			}
+
+			host := "localhost"
+			// take empty for client default
+			tlsPath := "/home/lightning/.lnd/tls.cert"
+			macDir := "/home/lightning/.lnd/data/chain/bitcoin/mainnet"
+
+			basicClient, err := lndclient.NewBasicClient(host, tlsPath, macDir, "mainnet")
+
+			if err != nil {
+				return err
+			}
+
+			getInfo := lnrpc.GetInfoRequest{}
+			info, err := basicClient.GetInfo(context.Background(), &getInfo)
+
+			if err != nil {
+				return err
+			}
+
+			cmdLog.Printf("connected to %s", info.GetAlias())
+
+			return nil
+		},
+	}
+
 	versionCmd := &ffcli.Command{
 		Name:       "version",
 		ShortUsage: "raiju version",
@@ -62,7 +97,7 @@ func main() {
 	root := &ffcli.Command{
 		ShortUsage:  "raiju [flags] <subcommand>",
 		FlagSet:     rootFlagSet,
-		Subcommands: []*ffcli.Command{btc2satCmd, versionCmd},
+		Subcommands: []*ffcli.Command{btc2satCmd, spanCmd, versionCmd},
 		Exec: func(context.Context, []string) error {
 			return flag.ErrHelp
 		},

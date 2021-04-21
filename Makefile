@@ -1,6 +1,7 @@
 
-BINDIR         := $(DESTDIR)/usr/bin
-VERSION        := $(shell git describe --tags)
+BINDIR		:= $(DESTDIR)/usr/bin
+VERSION		:= $(shell git describe --tags)
+LANHOST 	:= lightning@gemini
 
 .PHONY: test
 test:
@@ -17,3 +18,6 @@ install: test build
 uninstall:
 	@echo "uninstalling"
 	@rm -f $(BINDIR)/raiju
+
+deploy-lan: test build
+	@scp build/raiju $(LANHOST):~
