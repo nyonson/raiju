@@ -10,8 +10,8 @@ import (
 	"strconv"
 
 	"github.com/lightninglabs/lndclient"
-	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/nyonson/raiju"
+	"github.com/peterbourgon/ff/v3"
 	"github.com/peterbourgon/ff/v3/ffcli"
 )
 
@@ -22,15 +22,21 @@ func main() {
 	cmdLog := log.New(os.Stderr, "raiju: ", 0)
 
 	rootFlagSet := flag.NewFlagSet("raiju", flag.ExitOnError)
-	verbose := rootFlagSet.Bool("v", false, "increase log verbosity")
+	verbose := rootFlagSet.Bool("verbose", false, "increase log verbosity")
 
-	btc2satCmd := &ffcli.Command{
-		Name:       "btc2sat",
-		ShortUsage: "raiju btc2sat <btc>",
+	// lnd flags
+	host := rootFlagSet.String("host", "localhost:10009", "lnd host and port")
+	tlsPath := rootFlagSet.String("tlsPath", "", "lnd's tls cert path, defaults to lnd's default")
+	macDir := rootFlagSet.String("macDir", "", "lnd's macaroons directory, defaults to lnd's default")
+	network := rootFlagSet.String("network", "mainnet", "lightning network")
+
+	btcToSatCmd := &ffcli.Command{
+		Name:       "btc-to-sat",
+		ShortUsage: "raiju btc-to-sat <btc>",
 		ShortHelp:  "Convert bitcoins to satoshis",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) != 1 {
-				return errors.New("btc2sat only takes one arg")
+				return errors.New("btc-to-sat only takes one arg")
 			}
 
 			if *verbose {
@@ -42,39 +48,38 @@ func main() {
 				return fmt.Errorf("unable to parse arg: %s", args[0])
 			}
 
-			raiju.PrintBtc2sat(btc)
+			raiju.PrintBtcToSat(btc)
 			return nil
 		},
 	}
 
-	spanCmd := &ffcli.Command{
-		Name:       "span",
-		ShortUsage: "raiju span <pubkey>",
-		ShortHelp:  "Span network graph from node",
+	nbdFlagSet := flag.NewFlagSet("span", flag.ExitOnError)
+	minCapacity := nbdFlagSet.Int64("minCapacity", int64(10000000), "Minimum capacity of a node to display")
+	minChannels := nbdFlagSet.Int("minChannels", 5, "Minimum channels of a node to display")
+	minDistance := nbdFlagSet.Int("minDistance", 2, "Minimum distance of a node to display")
+	pubkey := nbdFlagSet.String("pubkey", "", "Node to span out from, defaults to lnd's")
+
+	nbdCmd := &ffcli.Command{
+		Name:       "nodes-by-distance",
+		ShortUsage: "raiju nodes-by-distance",
+		ShortHelp:  "List network nodes by distance from node",
+		FlagSet:    nbdFlagSet,
 		Exec: func(_ context.Context, args []string) error {
-			if len(args) != 1 {
-				return errors.New("span only takes one arg")
+			if len(args) != 0 {
+				return errors.New("nodes-by-distance doesn't take any arguements")
 			}
 
-			host := "localhost"
-			// take empty for client default
-			tlsPath := "/home/lightning/.lnd/tls.cert"
-			macDir := "/home/lightning/.lnd/data/chain/bitcoin/mainnet"
-
-			basicClient, err := lndclient.NewBasicClient(host, tlsPath, macDir, "mainnet")
+			client, err := lndclient.NewBasicClient(*host, *tlsPath, *macDir, *network)
 
 			if err != nil {
 				return err
 			}
 
-			getInfo := lnrpc.GetInfoRequest{}
-			info, err := basicClient.GetInfo(context.Background(), &getInfo)
+			err = raiju.NodesByDistance(client, *pubkey, *minCapacity, *minChannels, *minDistance)
 
 			if err != nil {
 				return err
 			}
-
-			cmdLog.Printf("connected to %s", info.GetAlias())
 
 			return nil
 		},
@@ -95,9 +100,10 @@ func main() {
 	}
 
 	root := &ffcli.Command{
-		ShortUsage:  "raiju [flags] <subcommand>",
+		ShortUsage:  "raiju [global flags] <subcommand> [subcommand flags] [subcommand args]",
 		FlagSet:     rootFlagSet,
-		Subcommands: []*ffcli.Command{btc2satCmd, spanCmd, versionCmd},
+		Subcommands: []*ffcli.Command{btcToSatCmd, nbdCmd, versionCmd},
+		Options:     []ff.Option{ff.WithEnvVarPrefix("RAIJU"), ff.WithConfigFileFlag("config"), ff.WithConfigFileParser(ff.PlainParser)},
 		Exec: func(context.Context, []string) error {
 			return flag.ErrHelp
 		},
