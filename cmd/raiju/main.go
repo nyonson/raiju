@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/lightninglabs/lndclient"
 	"github.com/nyonson/raiju"
@@ -47,10 +48,6 @@ func main() {
 				return errors.New("btc-to-sat only takes one arg")
 			}
 
-			if *verbose {
-				cmdLog.Printf("converting %s btc to sats", args[0])
-			}
-
 			btc, err := strconv.ParseFloat(args[0], 64)
 			if err != nil {
 				return fmt.Errorf("unable to parse arg: %s", args[0])
@@ -83,7 +80,16 @@ func main() {
 				return err
 			}
 
-			err = raiju.NodesByDistance(client, *pubkey, *minCapacity, *minChannels, *minDistance)
+			app := raiju.App{Client: client, Log: cmdLog, Verbose: *verbose}
+			request := raiju.NodesByDistanceRequest{
+				Pubkey:      *pubkey,
+				MinCapacity: *minCapacity,
+				MinChannels: *minChannels,
+				MinDistance: *minDistance,
+				MinUpdated:  time.Now().Add(-2 * 24 * time.Hour),
+			}
+
+			err = raiju.PrintNodesByDistance(app, request)
 
 			if err != nil {
 				return err

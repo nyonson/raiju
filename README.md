@@ -10,8 +10,10 @@
 ![build status](https://github.com/nyonson/raiju/actions/workflows/build.yml/badge.svg)
 - [overview](#overview)
 - [usage](#usage)
-  - [btc-to-sat](#btc-to-sat)
-  - [nodes-by-distance](#nodes-by-distance)
+  - [commands](#commands)
+    - [btc-to-sat](#btc-to-sat)
+    - [nodes-by-distance](#nodes-by-distance)
+  - [patterns](#patterns)
 - [installation](#installation)
   - [build locally](#build-locally)
 - [configuration](#configuration)
@@ -22,13 +24,17 @@ Raiju is your friendly bitcoin lightning network helper.
 
 # usage
 
+Raiju is a CLI app which sits on top of a running lightning node instance. It only supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation. Commands call out to the node and then perform anaylsis on the data returned.
+
+## commands
+
 All of Raiju's subcommands can be listed with the global help flag.
 
 ```
 raiju -h
 ```
 
-## btc-to-sat
+### btc-to-sat
 
 Quick conversion from btc to the smaller satoshi unit.
 
@@ -37,7 +43,7 @@ raiju btc2sat .000434
 43400
 ```
 
-## nodes-by-distance
+### nodes-by-distance
 
 Lists nodes by distance and capacity descending. Theoretically these are desirable nodes to open channels to because they are well connected, but far (a.k.a. many fees) away from the current node.
 
@@ -49,6 +55,10 @@ Pubkey                                                              Alias       
 039edc94987c8f3adc28dab455efc00dea876089a120f573bd0b03c40d9d3fb1e1  LNBIG.com [lnd-32]                3         1829244867  301       2021-04-20 23:12:11 -0700 PDT
 ...
 ```
+
+## patterns
+
+Raiju is stateless, but running commands on a cron schedule could provide some insights over time.
 
 # installation
 
@@ -72,7 +82,7 @@ Alternatively, Raiju can also be built locally.
 
 ## build locally
 
-Raiju can be built and installed locally with `make`. It requires `go` on the system to be compiled. Specify a `BINDIR` to override the default.
+Raiju can be built and installed locally with `make`. It requires `go` on the system to be compiled. Specify a `BINDIR` to override the default directory where `make` installs the executable.
 
 ```
 git clone https://github.com/nyonson/raiju.git
@@ -88,15 +98,15 @@ All flags can be found with the `-h` flag.
 # list global flags and subcommands
 raiju -h
 
-# list a subcommand flags
+# list a subcommand's flags
 raiju nodes-by-distance -h
 ```
 
 *Global* flags (not subcommand flags) can also be set through environment variables or a configuration file. Flags overwrite environment variables which overwrite the configuration file values.
 
-Environment variables have a `RAIJU_` prefix appended to the flag name. For example, the global `host` flag can be set with the `RAIJU_HOST` environment variable.
+Environment variables have a `RAIJU_` prefix appended to the flag name. For example, the global flag `host` can be set with the `RAIJU_HOST` environment variable.
 
-A configuration file can be provided with the `-config` flag or the default location (for Linux this is `~/.config/raiju/config`) can be used. The configuration file format is a flag per line, whitespace delimited.
+A configuration file can be provided with the `-config` flag or the default location (for Linux it's `~/.config/raiju/config`) can be used. The configuration file format is a flag per line, whitespace delimited.
 
 ```
 host localhost:10009
