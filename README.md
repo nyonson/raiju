@@ -60,6 +60,8 @@ Alternatively, Raiju can also be built locally.
 Raiju can be built and installed locally with `make`. It requires `go` on the system to be compiled. Specify a `BINDIR` to override the default.
 
 ```
+git clone https://github.com/nyonson/raiju.git
+cd raiju
 make BINDIR=~/.local/bin install
 ```
 
