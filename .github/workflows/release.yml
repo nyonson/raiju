@@ -23,6 +23,6 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
-        ldflags: -X "main.version=${{ GITHUB_REF }}"
+        ldflags: -X "main.version=${{ github.event.release.tag_name }}"
         project_path: "./cmd/raiju"
         extra_files: LICENSE README.md
