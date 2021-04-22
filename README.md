@@ -24,7 +24,7 @@ raiju -h
 
 ## btc-to-sat
 
-Quick conversion from btc to the smaller satoshi unit which is more popular in the lightning network.
+Quick conversion from btc to the smaller satoshi unit.
 
 ```
 raiju btc2sat .000434
@@ -32,6 +32,8 @@ raiju btc2sat .000434
 ```
 
 ## nodes-by-distance
+
+Lists nodes by distance and capacity descending. Theoretically these are desirable nodes to open channels to because they are well connected, but far (a.k.a. many fees) away from the current node.
 
 ```
 raiju nodes-by-distance
