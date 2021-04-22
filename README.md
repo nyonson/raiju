@@ -7,12 +7,18 @@
 ##    ##  ##     ##  ##  ##    ## ##     ## 
 ##     ## ##     ## ####  ######   #######  
 ```
+![build status](https://github.com/nyonson/raiju/actions/workflows/build.yml/badge.svg)
+- [overview](#overview)
+- [usage](#usage)
+  - [btc-to-sat](#btc-to-sat)
+  - [nodes-by-distance](#nodes-by-distance)
+- [installation](#installation)
+  - [build locally](#build-locally)
+- [configuration](#configuration)
 
 # overview
 
 Raiju is your friendly bitcoin lightning network helper.
-
-![build status](https://github.com/nyonson/raiju/actions/workflows/build.yml/badge.svg)
 
 # usage
 
@@ -73,7 +79,7 @@ cd raiju
 make BINDIR=~/.local/bin install
 ```
 
-## configuration
+# configuration
 
 All flags can be listed with the `-h` flag.
 
