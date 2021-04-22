@@ -1,11 +1,11 @@
 ```
-########     ###    ####       ## ##     ## 
-##     ##   ## ##    ##        ## ##     ## 
-##     ##  ##   ##   ##        ## ##     ## 
-########  ##     ##  ##        ## ##     ## 
-##   ##   #########  ##  ##    ## ##     ## 
-##    ##  ##     ##  ##  ##    ## ##     ## 
-##     ## ##     ## ####  ######   #######  
+      :::::::::      :::     ::::::::::: ::::::::::: :::    ::: 
+     :+:    :+:   :+: :+:       :+:         :+:     :+:    :+:  
+    +:+    +:+  +:+   +:+      +:+         +:+     +:+    +:+   
+   +#++:++#:  +#++:++#++:     +#+         +#+     +#+    +:+    
+  +#+    +#+ +#+     +#+     +#+         +#+     +#+    +#+     
+ #+#    #+# #+#     #+#     #+#     #+# #+#     #+#    #+#      
+###    ### ###     ### ###########  #####       ########            
 ```
 ![build status](https://github.com/nyonson/raiju/actions/workflows/build.yml/badge.svg)
 - [overview](#overview)
@@ -17,6 +17,7 @@
 - [installation](#installation)
   - [build locally](#build-locally)
 - [configuration](#configuration)
+- [node](#node)
 
 # overview
 
@@ -92,7 +93,7 @@ make BINDIR=~/.local/bin install
 
 # configuration
 
-All flags can be found with the `-h` flag.
+All flags can be found with the help flag `-h`.
 
 ```
 # list global flags and subcommands
@@ -102,7 +103,7 @@ raiju -h
 raiju nodes-by-distance -h
 ```
 
-*Global* flags (not subcommand flags) can also be set through environment variables or a configuration file. Flags overwrite environment variables which overwrite the configuration file values.
+*Global* flags (not subcommand flags) can be set on the CLI, through environment variables, or with a configuration file. Flags overwrite environment variables which overwrite the configuration file values.
 
 Environment variables have a `RAIJU_` prefix appended to the flag name. For example, the global flag `host` can be set with the `RAIJU_HOST` environment variable.
 
@@ -111,3 +112,7 @@ A configuration file can be provided with the `-config` flag or the default loca
 ```
 host localhost:10009
 ```
+
+# node
+
+Are you here looking for a node to open a channel too? Well, may I offer Riaju's node! Could always use the inbound: [`02b6867b56ca1b6a4548b97b009152683fa366bfa1b14119c8f9992e1acacbe1c8`](https://1ml.com/node/02b6867b56ca1b6a4548b97b009152683fa366bfa1b14119c8f9992e1acacbe1c8)

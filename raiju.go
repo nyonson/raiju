@@ -77,8 +77,8 @@ type NodesByDistanceRequest struct {
 	MinUpdated time.Time
 }
 
-// nodesByDistance walks the lightning network from a specific node keeping track of distance (hops)
-func nodesByDistance(app App, request NodesByDistanceRequest) ([]node, error) {
+// NodesByDistance walks the lightning network from a specific node keeping track of distance (hops)
+func NodesByDistance(app App, request NodesByDistanceRequest) ([]node, error) {
 	// default root node to local lnd if no key supplied
 	if request.Pubkey == "" {
 		pk, err := localPubkey(app)
@@ -174,7 +174,7 @@ func nodesByDistance(app App, request NodesByDistanceRequest) ([]node, error) {
 
 // PrintNodesByDistance outputs table formatted list of nodes by distance
 func PrintNodesByDistance(app App, request NodesByDistanceRequest) error {
-	nodes, err := nodesByDistance(app, request)
+	nodes, err := NodesByDistance(app, request)
 	if err != nil {
 		return err
 	}

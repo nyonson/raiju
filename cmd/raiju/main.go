@@ -124,11 +124,11 @@ func main() {
 	}
 
 	if err := root.ParseAndRun(context.Background(), os.Args[1:]); err != nil {
-		// no need to output redundant message
-		if err != flag.ErrHelp {
-			cmdLog.Fatalln(err)
-		} else {
+		// no need to output redundant message, just exit
+		if err == flag.ErrHelp {
 			os.Exit(1)
 		}
+
+		cmdLog.Fatalln(err)
 	}
 }
