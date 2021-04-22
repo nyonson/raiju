@@ -48,6 +48,8 @@ Binaries are available for download from [releases](https://github.com/nyonson/r
 ```
 curl -OL https://github.com/nyonson/raiju/releases/download/$VERSION/raiju-$VERSION-linux-amd64.tar.gz
 tar -xvzf raiju-$VERSION-linux-amd64.tar.gz
+
+# move the executable to the preferred bin directory on the PATH
 mv raiju ~/.local/bin
 ```
 
@@ -63,7 +65,7 @@ make BINDIR=~/.local/bin install
 
 ## configuration
 
-All flags can be listed with the `-h` flag
+All flags can be listed with the `-h` flag.
 
 ```
 # global flags
@@ -73,7 +75,7 @@ raiju -h
 raiju nodes-by-distance -h
 ```
 
-Global flags can also be set through environment variables or a configuration file. Flags overwrite environemnt variables which overwrite the configuration file.
+*Global* flags (not subcommand flags) can also be set through environment variables or a configuration file. Flags overwrite environment variables which overwrite the configuration file.
 
 Environment variables have a `RAIJU_` prefix appended to the flag name. For example, the global `host` flag can be set with the `RAIJU_HOST` environment variable.
 
