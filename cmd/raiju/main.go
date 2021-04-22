@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/lightninglabs/lndclient"
@@ -23,6 +24,13 @@ func main() {
 
 	rootFlagSet := flag.NewFlagSet("raiju", flag.ExitOnError)
 	verbose := rootFlagSet.Bool("verbose", false, "increase log verbosity")
+
+	// hooked up to ff with WithConfigFileFlag
+	var defaultConfigFile string
+	if d, err := os.UserConfigDir(); err == nil {
+		defaultConfigFile = filepath.Join(d, "raiju", "config")
+	}
+	rootFlagSet.String("config", defaultConfigFile, "configuration file path")
 
 	// lnd flags
 	host := rootFlagSet.String("host", "localhost:10009", "lnd host and port")
@@ -103,7 +111,7 @@ func main() {
 		ShortUsage:  "raiju [global flags] <subcommand> [subcommand flags] [subcommand args]",
 		FlagSet:     rootFlagSet,
 		Subcommands: []*ffcli.Command{btcToSatCmd, nbdCmd, versionCmd},
-		Options:     []ff.Option{ff.WithEnvVarPrefix("RAIJU"), ff.WithConfigFileFlag("config"), ff.WithConfigFileParser(ff.PlainParser)},
+		Options:     []ff.Option{ff.WithEnvVarPrefix("RAIJU"), ff.WithConfigFileFlag("config"), ff.WithConfigFileParser(ff.PlainParser), ff.WithAllowMissingConfigFile(true)},
 		Exec: func(context.Context, []string) error {
 			return flag.ErrHelp
 		},

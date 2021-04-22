@@ -95,7 +95,7 @@ raiju nodes-by-distance -h
 
 Environment variables have a `RAIJU_` prefix appended to the flag name. For example, the global `host` flag can be set with the `RAIJU_HOST` environment variable.
 
-To use a configuration file, a path must be provided with the `-config` global flag. The configuration file format is a flag per line, space delimited.
+A configuration file can be provided with the `-config` flag or the default location (for Linux this is `~/.config/raiju/config`) can be used. The configuration file format is a flag per line, whitespace delimited.
 
 ```
 host localhost:10009
