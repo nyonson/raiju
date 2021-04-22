@@ -46,7 +46,13 @@ Pubkey                                                              Alias       
 Binaries are available for download from [releases](https://github.com/nyonson/raiju/releases).
 
 ```
+# grab the binary
 curl -OL https://github.com/nyonson/raiju/releases/download/$VERSION/raiju-$VERSION-linux-amd64.tar.gz
+
+# optionally check md5 hash against the releases listed hash to ensure the correct binary
+md5sum raiju-$VERSION-linux-amd64.tar.gz
+
+# unpack the tarball
 tar -xvzf raiju-$VERSION-linux-amd64.tar.gz
 
 # move the executable to the preferred bin directory on the PATH
