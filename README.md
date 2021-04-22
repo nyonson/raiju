@@ -47,6 +47,7 @@ Pubkey                                                              Alias       
 0390b5d4492dc2f5318e5233ab2cebf6d48914881a33ef6a9c6bcdbb433ad986d0  LNBIG.com [lnd-01]                3         2568240344  547       2021-04-21 11:57:39 -0700 PDT
 02c91d6aa51aa940608b497b6beebcb1aec05be3c47704b682b3889424679ca490  LNBIG.com [lnd-21]                3         2132269524  370       2021-04-21 11:10:46 -0700 PDT
 039edc94987c8f3adc28dab455efc00dea876089a120f573bd0b03c40d9d3fb1e1  LNBIG.com [lnd-32]                3         1829244867  301       2021-04-20 23:12:11 -0700 PDT
+...
 ```
 
 # installation
@@ -81,17 +82,17 @@ make BINDIR=~/.local/bin install
 
 # configuration
 
-All flags can be listed with the `-h` flag.
+All flags can be found with the `-h` flag.
 
 ```
-# global flags
+# list global flags and subcommands
 raiju -h
 
-# subcommand flags
+# list a subcommand flags
 raiju nodes-by-distance -h
 ```
 
-*Global* flags (not subcommand flags) can also be set through environment variables or a configuration file. Flags overwrite environment variables which overwrite the configuration file.
+*Global* flags (not subcommand flags) can also be set through environment variables or a configuration file. Flags overwrite environment variables which overwrite the configuration file values.
 
 Environment variables have a `RAIJU_` prefix appended to the flag name. For example, the global `host` flag can be set with the `RAIJU_HOST` environment variable.
 
