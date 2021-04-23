@@ -40,7 +40,7 @@ raiju -h
 Quick conversion from btc to the smaller satoshi unit.
 
 ```
-raiju btc2sat .000434
+raiju btc-to-sat .000434
 43400
 ```
 
