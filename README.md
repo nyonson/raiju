@@ -25,7 +25,7 @@ Raiju is your friendly bitcoin lightning network helper.
 
 # usage
 
-Raiju is a CLI app which sits on top of a running lightning node instance. It only supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation. Commands call out to the node and then perform anaylsis on the data returned.
+Raiju is a CLI app which sits on top of a running lightning node instance. It only supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation. Raiju calls out to the node and then perform anaylsis on the data returned.
 
 ## commands
 
@@ -46,14 +46,15 @@ raiju btc2sat .000434
 
 ### nodes-by-distance
 
-Lists nodes by distance and capacity descending. Theoretically these are desirable nodes to open channels to because they are well connected, but far (a.k.a. many fees) away from the current node.
+Lists nodes by distance descending. Theoretically these are desirable nodes to open channels to because they are well connected, but far (a.k.a. many fees) away from the current node. The `Distant Neighbors` metric is the number of channels that node has with distant nodes from the root node.
 
 ```
 raiju nodes-by-distance
-Pubkey                                                              Alias                             Distance  Capacity    Channels  Updated
-0390b5d4492dc2f5318e5233ab2cebf6d48914881a33ef6a9c6bcdbb433ad986d0  LNBIG.com [lnd-01]                3         2568240344  547       2021-04-21 11:57:39 -0700 PDT
-02c91d6aa51aa940608b497b6beebcb1aec05be3c47704b682b3889424679ca490  LNBIG.com [lnd-21]                3         2132269524  370       2021-04-21 11:10:46 -0700 PDT
-039edc94987c8f3adc28dab455efc00dea876089a120f573bd0b03c40d9d3fb1e1  LNBIG.com [lnd-32]                3         1829244867  301       2021-04-20 23:12:11 -0700 PDT
+Pubkey                                                              Alias                             Distance  Distant Neighbors  Capacity    Channels  Updated
+029ef8a775117ba63662a1d1d92b8a184bb1758ed1e12b0cdbb5e92672ef695b73  Carnivore                         4         8                  14932925    8         2021-04-21 23:17:36 -0700 PDT
+0390b5d4492dc2f5318e5233ab2cebf6d48914881a33ef6a9c6bcdbb433ad986d0  LNBIG.com [lnd-01]                3         547                2568240344  547       2021-04-22 12:20:14 -0700 PDT
+02c91d6aa51aa940608b497b6beebcb1aec05be3c47704b682b3889424679ca490  LNBIG.com [lnd-21]                3         372                2134427027  372       2021-04-22 08:32:48 -0700 PDT
+02a04446caa81636d60d63b066f2814cbd3a6b5c258e3172cbdded7a16e2cfff4c  ln.bitstamp.net [Bitstamp]        3         366                1621569578  366       2021-04-22 12:43:28 -0700 PDT
 ...
 ```
 

@@ -31,21 +31,26 @@ func PrintBtcToSat(btc float64) {
 
 // node in the lightning graph network with computed properties
 type node struct {
-	pubkey    string
-	alias     string
-	distance  int
-	channels  int
-	capacity  int64
-	updated   time.Time
-	neighbors []string
+	pubkey          string
+	alias           string
+	distance        int
+	distantNeigbors int
+	channels        int
+	capacity        int64
+	updated         time.Time
+	neighbors       []string
 }
 
-// sortDistance sorts nodes by distance, capacity, and channels
+// sortDistance sorts nodes by distance, distant neigbors, capacity, and channels
 type sortDistance []node
 
 func (s sortDistance) Less(i, j int) bool {
 	if s[i].distance != s[j].distance {
 		return s[i].distance < s[j].distance
+	}
+
+	if s[i].distantNeigbors != s[j].distantNeigbors {
+		return s[i].distantNeigbors < s[j].distantNeigbors
 	}
 
 	if s[i].capacity != s[j].capacity {
@@ -73,6 +78,8 @@ type NodesByDistanceRequest struct {
 	MinChannels int
 	// MinDistance filters nodes with a minumum distance (number of hops) from the root node
 	MinDistance int
+	// MinNeighborDistance is the distance required for a node to be considered a distanct neighbor
+	MinNeighborDistance int
 	// MinUpdated filters nodes which have not been updated since time
 	MinUpdated time.Time
 }
@@ -154,12 +161,24 @@ func NodesByDistance(app App, request NodesByDistanceRequest) ([]node, error) {
 		current = next
 	}
 
-	// filter nodes by request minimums and sort them by distance
 	unfilteredSpan := make([]node, len(nodes))
 	for _, v := range nodes {
 		unfilteredSpan = append(unfilteredSpan, *v)
 	}
 
+	// calculate number of distant neighbors per node
+	for i := range unfilteredSpan {
+		count := 0
+		for _, n := range unfilteredSpan[i].neighbors {
+			if nodes[n].distance > request.MinNeighborDistance {
+				count++
+			}
+		}
+
+		unfilteredSpan[i].distantNeigbors = count
+	}
+
+	// filter nodes by request minimums
 	span := make([]node, 0)
 	for _, v := range unfilteredSpan {
 		if v.capacity > request.MinCapacity && v.channels > request.MinChannels && v.distance > request.MinDistance && v.updated.After(request.MinUpdated) {
@@ -179,10 +198,10 @@ func PrintNodesByDistance(app App, request NodesByDistanceRequest) error {
 		return err
 	}
 
-	tbl := table.New("Pubkey", "Alias", "Distance", "Capacity", "Channels", "Updated")
+	tbl := table.New("Pubkey", "Alias", "Distance", "Distant Neighbors", "Capacity", "Channels", "Updated")
 
 	for _, v := range nodes {
-		tbl.AddRow(v.pubkey, v.alias, v.distance, v.capacity, v.channels, v.updated)
+		tbl.AddRow(v.pubkey, v.alias, v.distance, v.distantNeigbors, v.capacity, v.channels, v.updated)
 	}
 	tbl.Print()
 

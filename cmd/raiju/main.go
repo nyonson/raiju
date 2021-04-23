@@ -59,15 +59,17 @@ func main() {
 	}
 
 	nbdFlagSet := flag.NewFlagSet("span", flag.ExitOnError)
-	minCapacity := nbdFlagSet.Int64("minCapacity", int64(10000000), "Minimum capacity of a node to display")
-	minChannels := nbdFlagSet.Int("minChannels", 5, "Minimum channels of a node to display")
-	minDistance := nbdFlagSet.Int("minDistance", 2, "Minimum distance of a node to display")
+	minCapacity := nbdFlagSet.Int64("minCapacity", int64(10000000), "Minimum capacity of a node")
+	minChannels := nbdFlagSet.Int("minChannels", 5, "Minimum channels of a node")
+	minDistance := nbdFlagSet.Int("minDistance", 2, "Minimum distance of a node")
+	minNeighborDistance := nbdFlagSet.Int("minNeighborDistance", 2, "Minimum distance of a neighbor node")
 	pubkey := nbdFlagSet.String("pubkey", "", "Node to span out from, defaults to lnd's")
 
 	nbdCmd := &ffcli.Command{
 		Name:       "nodes-by-distance",
 		ShortUsage: "raiju nodes-by-distance",
 		ShortHelp:  "List network nodes by distance from node",
+		LongHelp:   "Nodes are listed in decending order based on a few calculated metrics. The dominant metric is distance from the root node. Next is 'distant neighbors' which is the number of direct neighbors a node has that are distant from the root node.",
 		FlagSet:    nbdFlagSet,
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) != 0 {
@@ -82,11 +84,12 @@ func main() {
 
 			app := raiju.App{Client: client, Log: cmdLog, Verbose: *verbose}
 			request := raiju.NodesByDistanceRequest{
-				Pubkey:      *pubkey,
-				MinCapacity: *minCapacity,
-				MinChannels: *minChannels,
-				MinDistance: *minDistance,
-				MinUpdated:  time.Now().Add(-2 * 24 * time.Hour),
+				Pubkey:              *pubkey,
+				MinCapacity:         *minCapacity,
+				MinChannels:         *minChannels,
+				MinDistance:         *minDistance,
+				MinNeighborDistance: *minNeighborDistance,
+				MinUpdated:          time.Now().Add(-2 * 24 * time.Hour),
 			}
 
 			err = raiju.PrintNodesByDistance(app, request)
