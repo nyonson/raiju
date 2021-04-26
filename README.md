@@ -58,7 +58,7 @@ Pubkey                                                              Alias       
 ...
 ```
 
-Use the `-candidates` flag to find a set of nodes to batch open channels. The candidates flag allows you to see the remaining set of nodes assuming channels were opened to the candidates.
+Use the `-candidates` flag to find a set of nodes to open channels to in batch. The candidates flag allows you to see the remaining set of nodes assuming channels were opened to the candidates.
 
 ## patterns
 
