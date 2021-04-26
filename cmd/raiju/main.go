@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/lightninglabs/lndclient"
@@ -64,6 +65,7 @@ func main() {
 	minDistance := nbdFlagSet.Int("minDistance", 2, "Minimum distance of a node")
 	minNeighborDistance := nbdFlagSet.Int("minNeighborDistance", 2, "Minimum distance of a neighbor node")
 	pubkey := nbdFlagSet.String("pubkey", "", "Node to span out from, defaults to lnd's")
+	candidates := nbdFlagSet.String("candidates", "", "Comma separated pubkeys to assume channels too")
 
 	nbdCmd := &ffcli.Command{
 		Name:       "nodes-by-distance",
@@ -90,6 +92,7 @@ func main() {
 				MinDistance:         *minDistance,
 				MinNeighborDistance: *minNeighborDistance,
 				MinUpdated:          time.Now().Add(-2 * 24 * time.Hour),
+				Candidates:          strings.Split(*candidates, ","),
 			}
 
 			err = raiju.PrintNodesByDistance(app, request)

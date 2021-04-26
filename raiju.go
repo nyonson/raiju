@@ -82,6 +82,8 @@ type NodesByDistanceRequest struct {
 	MinNeighborDistance int
 	// MinUpdated filters nodes which have not been updated since time
 	MinUpdated time.Time
+	// Assume channels to these pubkeys
+	Candidates []string
 }
 
 // NodesByDistance walks the lightning network from a specific node keeping track of distance (hops)
@@ -136,6 +138,26 @@ func NodesByDistance(app App, request NodesByDistanceRequest) ([]node, error) {
 
 		nodes[e.Node1Pub].channels++
 		nodes[e.Node2Pub].channels++
+	}
+
+	// Add candidates to root node
+	for _, c := range request.Candidates {
+		if _, ok := nodes[c]; !ok {
+			app.Log.Printf("candidate node does not exist: %s", c)
+			continue
+		}
+
+		if nodes[request.Pubkey].neighbors != nil {
+			nodes[request.Pubkey].neighbors = append(nodes[request.Pubkey].neighbors, c)
+		} else {
+			nodes[request.Pubkey].neighbors = []string{c}
+		}
+
+		if nodes[c].neighbors != nil {
+			nodes[c].neighbors = append(nodes[c].neighbors, request.Pubkey)
+		} else {
+			nodes[c].neighbors = []string{request.Pubkey}
+		}
 	}
 
 	// BFS node graph to calculate distance from root node

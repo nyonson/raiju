@@ -25,7 +25,7 @@ Raiju is your friendly bitcoin lightning network helper.
 
 # usage
 
-Raiju is a CLI app which sits on top of a running lightning node instance. It only supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation. Raiju calls out to the node and then perform anaylsis on the data returned.
+Raiju is a CLI app which sits on top of a running lightning node instance. It only supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation. Raiju calls out to the node for network information and then performs anaylsis for insights.
 
 ## commands
 
@@ -57,6 +57,8 @@ Pubkey                                                              Alias       
 02a04446caa81636d60d63b066f2814cbd3a6b5c258e3172cbdded7a16e2cfff4c  ln.bitstamp.net [Bitstamp]        3         366                1621569578  366       2021-04-22 12:43:28 -0700 PDT
 ...
 ```
+
+Use the `-candidates` flag to find a set of nodes to batch open channels. The candidates flag allows you to see the remaining set of nodes assuming channels were opened to the candidates.
 
 ## patterns
 
