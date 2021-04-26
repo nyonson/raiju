@@ -66,6 +66,7 @@ func main() {
 	minNeighborDistance := nbdFlagSet.Int("minNeighborDistance", 2, "Minimum distance of a neighbor node")
 	pubkey := nbdFlagSet.String("pubkey", "", "Node to span out from, defaults to lnd's")
 	candidates := nbdFlagSet.String("candidates", "", "Comma separated pubkeys to assume channels too")
+	limit := nbdFlagSet.Int("limit", 100, "Number of results")
 
 	nbdCmd := &ffcli.Command{
 		Name:       "nodes-by-distance",
@@ -93,6 +94,7 @@ func main() {
 				MinNeighborDistance: *minNeighborDistance,
 				MinUpdated:          time.Now().Add(-2 * 24 * time.Hour),
 				Candidates:          strings.Split(*candidates, ","),
+				Limit:               *limit,
 			}
 
 			err = raiju.PrintNodesByDistance(app, request)

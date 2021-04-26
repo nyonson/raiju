@@ -84,6 +84,8 @@ type NodesByDistanceRequest struct {
 	MinUpdated time.Time
 	// Assume channels to these pubkeys
 	Candidates []string
+	// Number of results
+	Limit int
 }
 
 // NodesByDistance walks the lightning network from a specific node keeping track of distance (hops)
@@ -210,7 +212,7 @@ func NodesByDistance(app App, request NodesByDistanceRequest) ([]node, error) {
 
 	sort.Sort(sort.Reverse(sortDistance(span)))
 
-	return span, nil
+	return span[:request.Limit], nil
 }
 
 // PrintNodesByDistance outputs table formatted list of nodes by distance
