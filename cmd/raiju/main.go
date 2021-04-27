@@ -85,7 +85,7 @@ func main() {
 				return err
 			}
 
-			app := raiju.App{Client: client, Log: cmdLog, Verbose: *verbose}
+			app := raiju.App{Infoer: client, Grapher: client, Log: cmdLog, Verbose: *verbose}
 			request := raiju.NodesByDistanceRequest{
 				Pubkey:              *pubkey,
 				MinCapacity:         *minCapacity,
@@ -93,8 +93,9 @@ func main() {
 				MinDistance:         *minDistance,
 				MinNeighborDistance: *minNeighborDistance,
 				MinUpdated:          time.Now().Add(-2 * 24 * time.Hour),
-				Candidates:          strings.Split(*candidates, ","),
-				Limit:               *limit,
+				// using FieldsFunc to handle empty string case correctly
+				Candidates: strings.FieldsFunc(*candidates, func(c rune) bool { return c == ',' }),
+				Limit:      *limit,
 			}
 
 			err = raiju.PrintNodesByDistance(app, request)

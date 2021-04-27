@@ -10,11 +10,29 @@ import (
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/rodaine/table"
+	"google.golang.org/grpc"
 )
+
+// The following single method interfaces are already implemented by the
+// lnrpc.LightningClient. The interfaces limit the large interface of the
+// underlying client to just what Raiju needs which enables easier testing.
+// If other node implementations are supported in the future, these interfaces
+// may have to be further abstracted (e.g. not use lnd's protobuf models)
+
+// infoer fetches info from the local lightning node
+type infoer interface {
+	GetInfo(ctx context.Context, in *lnrpc.GetInfoRequest, opts ...grpc.CallOption) (*lnrpc.GetInfoResponse, error)
+}
+
+// grapher fetches graph state from the local lightning node
+type grapher interface {
+	DescribeGraph(ctx context.Context, in *lnrpc.ChannelGraphRequest, opts ...grpc.CallOption) (*lnrpc.ChannelGraph, error)
+}
 
 // App context
 type App struct {
-	Client  lnrpc.LightningClient
+	Infoer  infoer
+	Grapher grapher
 	Log     *log.Logger
 	Verbose bool
 }
@@ -29,8 +47,8 @@ func PrintBtcToSat(btc float64) {
 	fmt.Fprintln(os.Stdout, BtcToSat(btc))
 }
 
-// node in the lightning graph network with computed properties
-type node struct {
+// Node in the lightning graph network with computed properties
+type Node struct {
 	pubkey          string
 	alias           string
 	distance        int
@@ -42,7 +60,7 @@ type node struct {
 }
 
 // sortDistance sorts nodes by distance, distant neigbors, capacity, and channels
-type sortDistance []node
+type sortDistance []Node
 
 func (s sortDistance) Less(i, j int) bool {
 	if s[i].distance != s[j].distance {
@@ -89,7 +107,7 @@ type NodesByDistanceRequest struct {
 }
 
 // NodesByDistance walks the lightning network from a specific node keeping track of distance (hops)
-func NodesByDistance(app App, request NodesByDistanceRequest) ([]node, error) {
+func NodesByDistance(app App, request NodesByDistanceRequest) ([]Node, error) {
 	// default root node to local lnd if no key supplied
 	if request.Pubkey == "" {
 		pk, err := localPubkey(app)
@@ -104,7 +122,7 @@ func NodesByDistance(app App, request NodesByDistanceRequest) ([]node, error) {
 	channelGraphRequest := lnrpc.ChannelGraphRequest{
 		IncludeUnannounced: false,
 	}
-	channelGraph, err := app.Client.DescribeGraph(context.Background(), &channelGraphRequest)
+	channelGraph, err := app.Grapher.DescribeGraph(context.Background(), &channelGraphRequest)
 
 	if err != nil {
 		return nil, err
@@ -115,10 +133,10 @@ func NodesByDistance(app App, request NodesByDistanceRequest) ([]node, error) {
 	}
 
 	// initialize nodes map with static info
-	nodes := make(map[string]*node, len(channelGraph.Nodes))
+	nodes := make(map[string]*Node, len(channelGraph.Nodes))
 
 	for _, n := range channelGraph.Nodes {
-		nodes[n.PubKey] = &node{pubkey: n.PubKey, alias: n.Alias, updated: time.Unix(int64(n.LastUpdate), 0)}
+		nodes[n.PubKey] = &Node{pubkey: n.PubKey, alias: n.Alias, updated: time.Unix(int64(n.LastUpdate), 0).UTC()}
 	}
 
 	// calculate node properties based on channels: neighbors, capacity, channels
@@ -185,7 +203,7 @@ func NodesByDistance(app App, request NodesByDistanceRequest) ([]node, error) {
 		current = next
 	}
 
-	unfilteredSpan := make([]node, len(nodes))
+	unfilteredSpan := make([]Node, 0)
 	for _, v := range nodes {
 		unfilteredSpan = append(unfilteredSpan, *v)
 	}
@@ -203,14 +221,18 @@ func NodesByDistance(app App, request NodesByDistanceRequest) ([]node, error) {
 	}
 
 	// filter nodes by request minimums
-	span := make([]node, 0)
+	span := make([]Node, 0)
 	for _, v := range unfilteredSpan {
-		if v.capacity > request.MinCapacity && v.channels > request.MinChannels && v.distance > request.MinDistance && v.updated.After(request.MinUpdated) {
+		if v.capacity >= request.MinCapacity && v.channels >= request.MinChannels && v.distance >= request.MinDistance && v.updated.After(request.MinUpdated) {
 			span = append(span, v)
 		}
 	}
 
 	sort.Sort(sort.Reverse(sortDistance(span)))
+
+	if len(span) < request.Limit {
+		return span, nil
+	}
 
 	return span[:request.Limit], nil
 }
@@ -234,7 +256,7 @@ func PrintNodesByDistance(app App, request NodesByDistanceRequest) error {
 
 // localPubkey fetches the pubkey of the local instance of lnd
 func localPubkey(app App) (string, error) {
-	info, err := app.Client.GetInfo(context.Background(), &lnrpc.GetInfoRequest{})
+	info, err := app.Infoer.GetInfo(context.Background(), &lnrpc.GetInfoRequest{})
 
 	if err != nil {
 		return "", err
