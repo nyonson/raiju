@@ -41,11 +41,11 @@ func (f fakeGrapher) DescribeGraph(ctx context.Context, in *lnrpc.ChannelGraphRe
 	return f.graph, nil
 }
 
-func TestNodesByDistance(t *testing.T) {
+func TestCandidates(t *testing.T) {
 	tests := []struct {
 		name    string
 		graph   *lnrpc.ChannelGraph
-		request NodesByDistanceRequest
+		request CandidatesRequest
 		want    []Node
 	}{
 		{
@@ -59,7 +59,7 @@ func TestNodesByDistance(t *testing.T) {
 					},
 				},
 			},
-			request: NodesByDistanceRequest{
+			request: CandidatesRequest{
 				MinUpdated: rootUpdatedTime(t).Add(-time.Hour * 24),
 				Limit:      1,
 			},
@@ -81,14 +81,14 @@ func TestNodesByDistance(t *testing.T) {
 			Verbose: false,
 		}
 
-		nodes, err := NodesByDistance(app, tc.request)
+		nodes, err := Candidates(app, tc.request)
 
 		if err != nil {
 			t.Fatal("error calculating nodes by distance")
 		}
 
 		if !reflect.DeepEqual(tc.want, nodes) {
-			t.Fatalf("%s nodes by distance are incorrect\nwant: %v\ngot: %v", tc.name, tc.want, nodes)
+			t.Fatalf("%s candidates are incorrect\nwant: %v\ngot: %v", tc.name, tc.want, nodes)
 		}
 	}
 }

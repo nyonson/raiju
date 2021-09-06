@@ -40,13 +40,13 @@ func main() {
 	macDir := rootFlagSet.String("macDir", "", "lnd's macaroons directory, defaults to lnd's default")
 	network := rootFlagSet.String("network", "mainnet", "lightning network")
 
-	btcToSatCmd := &ffcli.Command{
-		Name:       "btc-to-sat",
-		ShortUsage: "raiju btc-to-sat <btc>",
+	satsCmd := &ffcli.Command{
+		Name:       "sats",
+		ShortUsage: "raiju sats <btc>",
 		ShortHelp:  "Convert bitcoins to satoshis",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) != 1 {
-				return errors.New("btc-to-sat only takes one arg")
+				return errors.New("sats only takes one arg")
 			}
 
 			btc, err := strconv.ParseFloat(args[0], 64)
@@ -59,24 +59,24 @@ func main() {
 		},
 	}
 
-	nbdFlagSet := flag.NewFlagSet("span", flag.ExitOnError)
-	minCapacity := nbdFlagSet.Int64("minCapacity", int64(10000000), "Minimum capacity of a node")
-	minChannels := nbdFlagSet.Int("minChannels", 5, "Minimum channels of a node")
-	minDistance := nbdFlagSet.Int("minDistance", 2, "Minimum distance of a node")
-	minNeighborDistance := nbdFlagSet.Int("minNeighborDistance", 2, "Minimum distance of a neighbor node")
-	pubkey := nbdFlagSet.String("pubkey", "", "Node to span out from, defaults to lnd's")
-	candidates := nbdFlagSet.String("candidates", "", "Comma separated pubkeys to assume channels too")
-	limit := nbdFlagSet.Int("limit", 100, "Number of results")
+	candidatesFlagSet := flag.NewFlagSet("span", flag.ExitOnError)
+	minCapacity := candidatesFlagSet.Int64("minCapacity", int64(10000000), "Minimum capacity of a node")
+	minChannels := candidatesFlagSet.Int("minChannels", 5, "Minimum channels of a node")
+	minDistance := candidatesFlagSet.Int("minDistance", 2, "Minimum distance of a node")
+	minNeighborDistance := candidatesFlagSet.Int("minNeighborDistance", 2, "Minimum distance of a neighbor node")
+	pubkey := candidatesFlagSet.String("pubkey", "", "Node to span out from, defaults to lnd's")
+	assume := candidatesFlagSet.String("assume", "", "Comma separated pubkeys to assume channels too")
+	limit := candidatesFlagSet.Int("limit", 100, "Number of results")
 
-	nbdCmd := &ffcli.Command{
-		Name:       "nodes-by-distance",
-		ShortUsage: "raiju nodes-by-distance",
-		ShortHelp:  "List network nodes by distance from node",
+	candidatesCmd := &ffcli.Command{
+		Name:       "candidates",
+		ShortUsage: "raiju candidates",
+		ShortHelp:  "List candidate nodes by distance from node and centralization",
 		LongHelp:   "Nodes are listed in decending order based on a few calculated metrics. The dominant metric is distance from the root node. Next is 'distant neighbors' which is the number of direct neighbors a node has that are distant from the root node.",
-		FlagSet:    nbdFlagSet,
+		FlagSet:    candidatesFlagSet,
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) != 0 {
-				return errors.New("nodes-by-distance doesn't take any arguements")
+				return errors.New("candidates doesn't take any arguements")
 			}
 
 			client, err := lndclient.NewBasicClient(*host, *tlsPath, *macDir, *network)
@@ -86,7 +86,7 @@ func main() {
 			}
 
 			app := raiju.App{Infoer: client, Grapher: client, Log: cmdLog, Verbose: *verbose}
-			request := raiju.NodesByDistanceRequest{
+			request := raiju.CandidatesRequest{
 				Pubkey:              *pubkey,
 				MinCapacity:         *minCapacity,
 				MinChannels:         *minChannels,
@@ -94,11 +94,11 @@ func main() {
 				MinNeighborDistance: *minNeighborDistance,
 				MinUpdated:          time.Now().Add(-2 * 24 * time.Hour),
 				// using FieldsFunc to handle empty string case correctly
-				Candidates: strings.FieldsFunc(*candidates, func(c rune) bool { return c == ',' }),
-				Limit:      *limit,
+				Assume: strings.FieldsFunc(*assume, func(c rune) bool { return c == ',' }),
+				Limit:  *limit,
 			}
 
-			err = raiju.PrintNodesByDistance(app, request)
+			err = raiju.PrintCandidates(app, request)
 
 			if err != nil {
 				return err
@@ -125,7 +125,7 @@ func main() {
 	root := &ffcli.Command{
 		ShortUsage:  "raiju [global flags] <subcommand> [subcommand flags] [subcommand args]",
 		FlagSet:     rootFlagSet,
-		Subcommands: []*ffcli.Command{btcToSatCmd, nbdCmd, versionCmd},
+		Subcommands: []*ffcli.Command{satsCmd, candidatesCmd, versionCmd},
 		Options:     []ff.Option{ff.WithEnvVarPrefix("RAIJU"), ff.WithConfigFileFlag("config"), ff.WithConfigFileParser(ff.PlainParser), ff.WithAllowMissingConfigFile(true)},
 		Exec: func(context.Context, []string) error {
 			return flag.ErrHelp

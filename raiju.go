@@ -86,8 +86,8 @@ func (s sortDistance) Len() int {
 	return len(s)
 }
 
-// NodesByDistanceRequest contains necessary info to perform sorting across the network
-type NodesByDistanceRequest struct {
+// CandidatesRequest contains necessary info to perform sorting across the network
+type CandidatesRequest struct {
 	// Pubkey is the key of the root node to perform crawl from
 	Pubkey string
 	// MinCapcity filters nodes with a minimum satoshi capacity (sum of channels)
@@ -101,13 +101,13 @@ type NodesByDistanceRequest struct {
 	// MinUpdated filters nodes which have not been updated since time
 	MinUpdated time.Time
 	// Assume channels to these pubkeys
-	Candidates []string
+	Assume []string
 	// Number of results
 	Limit int
 }
 
-// NodesByDistance walks the lightning network from a specific node keeping track of distance (hops)
-func NodesByDistance(app App, request NodesByDistanceRequest) ([]Node, error) {
+// Candidates walks the lightning network from a specific node keeping track of distance (hops)
+func Candidates(app App, request CandidatesRequest) ([]Node, error) {
 	// default root node to local lnd if no key supplied
 	if request.Pubkey == "" {
 		pk, err := localPubkey(app)
@@ -160,8 +160,8 @@ func NodesByDistance(app App, request NodesByDistanceRequest) ([]Node, error) {
 		nodes[e.Node2Pub].channels++
 	}
 
-	// Add candidates to root node
-	for _, c := range request.Candidates {
+	// Add assumes to root node
+	for _, c := range request.Assume {
 		if _, ok := nodes[c]; !ok {
 			app.Log.Printf("candidate node does not exist: %s", c)
 			continue
@@ -237,9 +237,9 @@ func NodesByDistance(app App, request NodesByDistanceRequest) ([]Node, error) {
 	return span[:request.Limit], nil
 }
 
-// PrintNodesByDistance outputs table formatted list of nodes by distance
-func PrintNodesByDistance(app App, request NodesByDistanceRequest) error {
-	nodes, err := NodesByDistance(app, request)
+// PrintCandidates outputs table formatted list of nodes by distance
+func PrintCandidates(app App, request CandidatesRequest) error {
+	nodes, err := Candidates(app, request)
 	if err != nil {
 		return err
 	}

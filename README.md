@@ -35,21 +35,21 @@ All of Raiju's subcommands can be listed with the global help flag.
 raiju -h
 ```
 
-### btc-to-sat
+### sats
 
-Quick conversion from btc to the smaller satoshi unit.
+Quick conversion from btc to the smaller satoshi unit. We talk in sats.
 
 ```
-raiju btc-to-sat .000434
+raiju sats .000434
 43400
 ```
 
-### nodes-by-distance
+### candidates
 
 Lists nodes by distance descending. Theoretically these are desirable nodes to open channels to because they are well connected, but far (a.k.a. many fees) away from the current node. The `Distant Neighbors` metric is the number of channels that node has with distant nodes from the root node.
 
 ```
-raiju nodes-by-distance
+raiju candidates
 Pubkey                                                              Alias                             Distance  Distant Neighbors  Capacity    Channels  Updated
 029ef8a775117ba63662a1d1d92b8a184bb1758ed1e12b0cdbb5e92672ef695b73  Carnivore                         4         8                  14932925    8         2021-04-21 23:17:36 -0700 PDT
 0390b5d4492dc2f5318e5233ab2cebf6d48914881a33ef6a9c6bcdbb433ad986d0  LNBIG.com [lnd-01]                3         547                2568240344  547       2021-04-22 12:20:14 -0700 PDT
@@ -58,11 +58,7 @@ Pubkey                                                              Alias       
 ...
 ```
 
-The candidates flag allows you to see the remaining set of nodes assuming channels were opened to the candidates. This can be used to find a set of nodes to open channels too in single batch transaction. Batch transactions minimize on onchain fees. 
-
-## patterns
-
-Raiju is stateless, but running commands on a cron schedule could provide some insights over time.
+The `assume`` flag allows you to see the remaining set of nodes assuming channels were opened to a candidate. This can be used to find a set of nodes to open channels too in single batch transaction. Batch transactions minimize on onchain fees. 
 
 # installation
 
