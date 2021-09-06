@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lightningnetwork/lnd/lnrpc"
-	"google.golang.org/grpc"
+	"github.com/lightninglabs/lndclient"
+	"github.com/lightningnetwork/lnd/routing/route"
 )
 
 const (
-	rootPubkey  = "fakePubKey123"
+	rootPubkey  = "111111111112300000000000000000000000000000000000000000000000000000"
 	rootAlias   = "raiju"
 	rootUpdated = "2020-01-02T15:04:05Z"
 )
@@ -25,37 +25,34 @@ func TestBtcToSat(t *testing.T) {
 	}
 }
 
-type fakeInfoer struct {
-	info *lnrpc.GetInfoResponse
+type fakeClient struct {
+	info  *lndclient.Info
+	graph *lndclient.Graph
 }
 
-func (f fakeInfoer) GetInfo(ctx context.Context, in *lnrpc.GetInfoRequest, opts ...grpc.CallOption) (*lnrpc.GetInfoResponse, error) {
+func (f fakeClient) GetInfo(ctx context.Context) (*lndclient.Info, error) {
 	return f.info, nil
 }
 
-type fakeGrapher struct {
-	graph *lnrpc.ChannelGraph
-}
-
-func (f fakeGrapher) DescribeGraph(ctx context.Context, in *lnrpc.ChannelGraphRequest, opts ...grpc.CallOption) (*lnrpc.ChannelGraph, error) {
+func (f fakeClient) DescribeGraph(ctx context.Context, includeUnannounced bool) (*lndclient.Graph, error) {
 	return f.graph, nil
 }
 
 func TestCandidates(t *testing.T) {
 	tests := []struct {
 		name    string
-		graph   *lnrpc.ChannelGraph
+		graph   *lndclient.Graph
 		request CandidatesRequest
 		want    []Node
 	}{
 		{
 			name: "identity",
-			graph: &lnrpc.ChannelGraph{
-				Nodes: []*lnrpc.LightningNode{
+			graph: &lndclient.Graph{
+				Nodes: []lndclient.Node{
 					{
-						PubKey:     rootPubkey,
+						PubKey:     rootVertex(t),
 						Alias:      rootAlias,
-						LastUpdate: uint32(rootUpdatedTime(t).Unix()),
+						LastUpdate: rootUpdatedTime(t),
 					},
 				},
 			},
@@ -75,8 +72,7 @@ func TestCandidates(t *testing.T) {
 
 	for _, tc := range tests {
 		app := App{
-			Infoer:  fakeInfoer{info: &lnrpc.GetInfoResponse{IdentityPubkey: rootPubkey}},
-			Grapher: fakeGrapher{graph: tc.graph},
+			Client:  fakeClient{info: &lndclient.Info{IdentityPubkey: rootVertex(t)}, graph: tc.graph},
 			Log:     log.New(ioutil.Discard, "", 0),
 			Verbose: false,
 		}
@@ -100,4 +96,14 @@ func rootUpdatedTime(t *testing.T) time.Time {
 		t.Fatalf("unable to parse time: %s", err)
 	}
 	return time
+}
+
+// helper function to keep error checks out of tests
+func rootVertex(t *testing.T) route.Vertex {
+	v, err := route.NewVertexFromStr(rootPubkey)
+	if err != nil {
+		t.Fatalf("unable to convert vertex: %s", err)
+	}
+
+	return v
 }

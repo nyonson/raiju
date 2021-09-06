@@ -2,37 +2,26 @@ package raiju
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"os"
 	"sort"
 	"time"
 
-	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/btcsuite/btcutil"
+	"github.com/lightninglabs/lndclient"
 	"github.com/rodaine/table"
-	"google.golang.org/grpc"
 )
 
-// The following single method interfaces are already implemented by the
-// lnrpc.LightningClient. The interfaces limit the large interface of the
-// underlying client to just what Raiju needs which enables easier testing.
-// If other node implementations are supported in the future, these interfaces
-// may have to be further abstracted (e.g. not use lnd's protobuf models)
-
-// infoer fetches info from the local lightning node
-type infoer interface {
-	GetInfo(ctx context.Context, in *lnrpc.GetInfoRequest, opts ...grpc.CallOption) (*lnrpc.GetInfoResponse, error)
-}
-
-// grapher fetches graph state from the local lightning node
-type grapher interface {
-	DescribeGraph(ctx context.Context, in *lnrpc.ChannelGraphRequest, opts ...grpc.CallOption) (*lnrpc.ChannelGraph, error)
+type Client interface {
+	GetInfo(ctx context.Context) (*lndclient.Info, error)
+	DescribeGraph(ctx context.Context, includeUnannounced bool) (*lndclient.Graph, error)
 }
 
 // App context
 type App struct {
-	Infoer  infoer
-	Grapher grapher
+	Client  Client
 	Log     *log.Logger
 	Verbose bool
 }
@@ -54,7 +43,7 @@ type Node struct {
 	distance        int
 	distantNeigbors int
 	channels        int
-	capacity        int64
+	capacity        float64
 	updated         time.Time
 	neighbors       []string
 }
@@ -91,7 +80,7 @@ type CandidatesRequest struct {
 	// Pubkey is the key of the root node to perform crawl from
 	Pubkey string
 	// MinCapcity filters nodes with a minimum satoshi capacity (sum of channels)
-	MinCapacity int64
+	MinCapacity float64
 	// MinChannels filters nodes with a minimum number of channels
 	MinChannels int
 	// MinDistance filters nodes with a minumum distance (number of hops) from the root node
@@ -119,10 +108,7 @@ func Candidates(app App, request CandidatesRequest) ([]Node, error) {
 	}
 
 	// pull entire network graph from lnd
-	channelGraphRequest := lnrpc.ChannelGraphRequest{
-		IncludeUnannounced: false,
-	}
-	channelGraph, err := app.Grapher.DescribeGraph(context.Background(), &channelGraphRequest)
+	channelGraph, err := app.Client.DescribeGraph(context.Background(), false)
 
 	if err != nil {
 		return nil, err
@@ -136,28 +122,28 @@ func Candidates(app App, request CandidatesRequest) ([]Node, error) {
 	nodes := make(map[string]*Node, len(channelGraph.Nodes))
 
 	for _, n := range channelGraph.Nodes {
-		nodes[n.PubKey] = &Node{pubkey: n.PubKey, alias: n.Alias, updated: time.Unix(int64(n.LastUpdate), 0).UTC()}
+		nodes[n.PubKey.String()] = &Node{pubkey: n.PubKey.String(), alias: n.Alias, updated: n.LastUpdate}
 	}
 
 	// calculate node properties based on channels: neighbors, capacity, channels
 	for _, e := range channelGraph.Edges {
-		if nodes[e.Node1Pub].neighbors != nil {
-			nodes[e.Node1Pub].neighbors = append(nodes[e.Node1Pub].neighbors, e.Node2Pub)
+		if nodes[e.Node1.String()].neighbors != nil {
+			nodes[e.Node1.String()].neighbors = append(nodes[e.Node1.String()].neighbors, e.Node2.String())
 		} else {
-			nodes[e.Node1Pub].neighbors = []string{e.Node2Pub}
+			nodes[e.Node1.String()].neighbors = []string{e.Node2.String()}
 		}
 
-		if nodes[e.Node2Pub].neighbors != nil {
-			nodes[e.Node2Pub].neighbors = append(nodes[e.Node2Pub].neighbors, e.Node1Pub)
+		if nodes[e.Node2.String()].neighbors != nil {
+			nodes[e.Node2.String()].neighbors = append(nodes[e.Node2.String()].neighbors, e.Node1.String())
 		} else {
-			nodes[e.Node2Pub].neighbors = []string{e.Node1Pub}
+			nodes[e.Node2.String()].neighbors = []string{e.Node1.String()}
 		}
 
-		nodes[e.Node1Pub].capacity += e.Capacity
-		nodes[e.Node2Pub].capacity += e.Capacity
+		nodes[e.Node1.String()].capacity += e.Capacity.ToUnit(btcutil.AmountSatoshi)
+		nodes[e.Node2.String()].capacity += e.Capacity.ToUnit(btcutil.AmountSatoshi)
 
-		nodes[e.Node1Pub].channels++
-		nodes[e.Node2Pub].channels++
+		nodes[e.Node1.String()].channels++
+		nodes[e.Node2.String()].channels++
 	}
 
 	// Add assumes to root node
@@ -256,11 +242,11 @@ func PrintCandidates(app App, request CandidatesRequest) error {
 
 // localPubkey fetches the pubkey of the local instance of lnd
 func localPubkey(app App) (string, error) {
-	info, err := app.Infoer.GetInfo(context.Background(), &lnrpc.GetInfoRequest{})
+	info, err := app.Client.GetInfo(context.Background())
 
 	if err != nil {
 		return "", err
 	}
 
-	return info.IdentityPubkey, nil
+	return hex.EncodeToString(info.IdentityPubkey[:]), nil
 }

@@ -60,7 +60,7 @@ func main() {
 	}
 
 	candidatesFlagSet := flag.NewFlagSet("span", flag.ExitOnError)
-	minCapacity := candidatesFlagSet.Int64("minCapacity", int64(10000000), "Minimum capacity of a node")
+	minCapacity := candidatesFlagSet.Float64("minCapacity", float64(10000000), "Minimum capacity of a node")
 	minChannels := candidatesFlagSet.Int("minChannels", 5, "Minimum channels of a node")
 	minDistance := candidatesFlagSet.Int("minDistance", 2, "Minimum distance of a node")
 	minNeighborDistance := candidatesFlagSet.Int("minNeighborDistance", 2, "Minimum distance of a neighbor node")
@@ -79,13 +79,19 @@ func main() {
 				return errors.New("candidates doesn't take any arguements")
 			}
 
-			client, err := lndclient.NewBasicClient(*host, *tlsPath, *macDir, *network)
+			cfg := &lndclient.LndServicesConfig{
+				LndAddress:  *host,
+				Network:     lndclient.Network(*network),
+				MacaroonDir: *macDir,
+				TLSPath:     *tlsPath,
+			}
+			services, err := lndclient.NewLndServices(cfg)
 
 			if err != nil {
 				return err
 			}
 
-			app := raiju.App{Infoer: client, Grapher: client, Log: cmdLog, Verbose: *verbose}
+			app := raiju.App{Client: services.Client, Log: cmdLog, Verbose: *verbose}
 			request := raiju.CandidatesRequest{
 				Pubkey:              *pubkey,
 				MinCapacity:         *minCapacity,
