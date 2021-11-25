@@ -7,7 +7,6 @@
  #+#    #+# #+#     #+#     #+#     #+# #+#     #+#    #+#      
 ###    ### ###     ### ###########  #####       ########            
 ```
-![build status](https://github.com/nyonson/raiju/actions/workflows/build.yml/badge.svg)
 - [overview](#overview)
 - [usage](#usage)
   - [commands](#commands)
@@ -61,32 +60,12 @@ The `assume`` flag allows you to see the remaining set of nodes assuming channel
 
 # installation
 
-Binaries are available for download from [releases](https://github.com/nyonson/raiju/releases).
-
-```
-# grab the binary
-curl -OL https://github.com/nyonson/raiju/releases/download/$VERSION/raiju-$VERSION-linux-amd64.tar.gz
-
-# optionally check md5 hash against the releases listed hash to ensure the correct binary
-md5sum raiju-$VERSION-linux-amd64.tar.gz
-
-# unpack the tarball
-tar -xvzf raiju-$VERSION-linux-amd64.tar.gz
-
-# move the executable to the preferred bin directory on the PATH
-mv raiju ~/.local/bin
-```
-
-Alternatively, Raiju can also be built locally.
-
-## build locally
-
 Raiju can be built and installed locally with `make`. It requires `go` on the system to be compiled. Specify a `BINDIR` to override the default directory where `make` installs the executable.
 
 ```
-git clone https://github.com/nyonson/raiju.git
+git clone https://git.sr.ht/~yonson/raiju
 cd raiju
-make BINDIR=~/.local/bin install
+make install
 ```
 
 # configuration
@@ -98,7 +77,7 @@ All flags can be found with the help flag `-h`.
 raiju -h
 
 # list a subcommand's flags
-raiju nodes-by-distance -h
+raiju candidates -h
 ```
 
 *Global* flags (not subcommand flags) can be set on the CLI, through environment variables, or with a configuration file. Flags overwrite environment variables which overwrite the configuration file values.
