@@ -19,13 +19,11 @@
 
 # overview
 
-Raiju is your friendly bitcoin lightning network helper.
+Your friendly bitcoin lightning network helper.
+
+Raiju is a CLI app which sits on top of a running lightning node instance. It currently only supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation. Raiju calls out to the node for network information and then performs anaylsis for insights.
 
 # usage
-
-Raiju is a CLI app which sits on top of a running lightning node instance. It only supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation. Raiju calls out to the node for network information and then performs anaylsis for insights.
-
-## commands
 
 All of Raiju's subcommands can be listed with the global help flag.
 
@@ -33,7 +31,7 @@ All of Raiju's subcommands can be listed with the global help flag.
 raiju -h
 ```
 
-### sats
+## sats
 
 Quick conversion from btc to the smaller satoshi unit. We talk in sats.
 
@@ -42,7 +40,7 @@ raiju sats .000434
 43400
 ```
 
-### candidates
+## candidates
 
 Lists nodes by distance descending. Theoretically these are desirable nodes to open channels to because they are well connected, but far (a.k.a. many fees) away from the current node. The `Distant Neighbors` metric is the number of channels that node has with distant nodes from the root node.
 
