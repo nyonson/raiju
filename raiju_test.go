@@ -2,14 +2,11 @@ package raiju
 
 import (
 	"context"
-	"io/ioutil"
-	"log"
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/lightninglabs/lndclient"
-	"github.com/lightningnetwork/lnd/routing/route"
+	"git.sr.ht/~yonson/raiju/lightning"
 )
 
 const (
@@ -18,6 +15,37 @@ const (
 	rootUpdated = "2020-01-02T15:04:05Z"
 )
 
+type fakeClient struct {
+	getInfo       func(ctx context.Context) (*lightning.Info, error)
+	describeGraph func(ctx context.Context) (*lightning.Graph, error)
+}
+
+func (f fakeClient) GetInfo(ctx context.Context) (*lightning.Info, error) {
+	if f.getInfo != nil {
+		return f.getInfo(ctx)
+	}
+
+	return &lightning.Info{
+		Pubkey: rootPubkey,
+	}, nil
+}
+
+func (f fakeClient) DescribeGraph(ctx context.Context) (*lightning.Graph, error) {
+	if f.describeGraph != nil {
+		return f.describeGraph(ctx)
+	}
+
+	n := lightning.Node{
+		PubKey:  rootPubkey,
+		Alias:   rootAlias,
+		Updated: time.Time{},
+	}
+
+	return &lightning.Graph{
+		Nodes: []lightning.Node{n},
+	}, nil
+}
+
 func TestBtcToSat(t *testing.T) {
 	sats := BtcToSat(.001)
 	if sats != 100000 {
@@ -25,85 +53,46 @@ func TestBtcToSat(t *testing.T) {
 	}
 }
 
-type fakeClient struct {
-	info  *lndclient.Info
-	graph *lndclient.Graph
-}
-
-func (f fakeClient) GetInfo(ctx context.Context) (*lndclient.Info, error) {
-	return f.info, nil
-}
-
-func (f fakeClient) DescribeGraph(ctx context.Context, includeUnannounced bool) (*lndclient.Graph, error) {
-	return f.graph, nil
-}
-
-func TestCandidates(t *testing.T) {
+func TestRaiju_Candidates(t *testing.T) {
+	type fields struct {
+		client client
+	}
+	type args struct {
+		ctx     context.Context
+		request CandidatesRequest
+	}
 	tests := []struct {
 		name    string
-		graph   *lndclient.Graph
-		request CandidatesRequest
-		want    []Node
+		fields  fields
+		args    args
+		want    []RelativeNode
+		wantErr bool
 	}{
 		{
-			name: "identity",
-			graph: &lndclient.Graph{
-				Nodes: []lndclient.Node{
-					{
-						PubKey:     rootVertex(t),
-						Alias:      rootAlias,
-						LastUpdate: rootUpdatedTime(t),
-					},
-				},
+			name: "zero graph",
+			fields: fields{
+				client: fakeClient{},
 			},
-			request: CandidatesRequest{
-				MinUpdated: rootUpdatedTime(t).Add(-time.Hour * 24),
-				Limit:      1,
+			args: args{
+				request: CandidatesRequest{},
 			},
-			want: []Node{
-				{
-					pubkey:  rootPubkey,
-					alias:   rootAlias,
-					updated: rootUpdatedTime(t),
-				},
-			},
+			want:    []RelativeNode{},
+			wantErr: false,
 		},
 	}
-
-	for _, tc := range tests {
-		app := App{
-			Client:  fakeClient{info: &lndclient.Info{IdentityPubkey: rootVertex(t)}, graph: tc.graph},
-			Log:     log.New(ioutil.Discard, "", 0),
-			Verbose: false,
-		}
-
-		nodes, err := Candidates(app, tc.request)
-
-		if err != nil {
-			t.Fatal("error calculating nodes by distance")
-		}
-
-		if !reflect.DeepEqual(tc.want, nodes) {
-			t.Fatalf("%s candidates are incorrect\nwant: %v\ngot: %v", tc.name, tc.want, nodes)
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := Raiju{
+				client: tt.fields.client,
+			}
+			got, err := r.Candidates(tt.args.ctx, tt.args.request)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Raiju.Candidates() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Raiju.Candidates() = %v, want %v", got, tt.want)
+			}
+		})
 	}
-}
-
-// helper function to keep error checks out of tests
-func rootUpdatedTime(t *testing.T) time.Time {
-	time, err := time.Parse(time.RFC3339, rootUpdated)
-	if err != nil {
-		t.Fatalf("unable to parse time: %s", err)
-	}
-	return time
-}
-
-// helper function to keep error checks out of tests
-func rootVertex(t *testing.T) route.Vertex {
-	v, err := route.NewVertexFromStr(rootPubkey)
-	if err != nil {
-		t.Fatalf("unable to convert vertex: %s", err)
-	}
-
-	return v
 }

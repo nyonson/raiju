@@ -13,9 +13,11 @@ import (
 	"time"
 
 	"github.com/lightninglabs/lndclient"
-	"github.com/nyonson/raiju"
 	"github.com/peterbourgon/ff/v3"
 	"github.com/peterbourgon/ff/v3/ffcli"
+
+	"git.sr.ht/~yonson/raiju"
+	"git.sr.ht/~yonson/raiju/lightning"
 )
 
 // version is set by build tools during linking
@@ -25,7 +27,6 @@ func main() {
 	cmdLog := log.New(os.Stderr, "raiju: ", 0)
 
 	rootFlagSet := flag.NewFlagSet("raiju", flag.ExitOnError)
-	verbose := rootFlagSet.Bool("verbose", false, "increase log verbosity")
 
 	// hooked up to ff with WithConfigFileFlag
 	var defaultConfigFile string
@@ -54,7 +55,7 @@ func main() {
 				return fmt.Errorf("unable to parse arg: %s", args[0])
 			}
 
-			raiju.PrintBtcToSat(btc)
+			fmt.Fprintln(os.Stdout, raiju.BtcToSat(btc))
 			return nil
 		},
 	}
@@ -74,7 +75,7 @@ func main() {
 		ShortHelp:  "List candidate nodes by distance from node and centralization",
 		LongHelp:   "Nodes are listed in decending order based on a few calculated metrics. The dominant metric is distance from the root node. Next is 'distant neighbors' which is the number of direct neighbors a node has that are distant from the root node.",
 		FlagSet:    candidatesFlagSet,
-		Exec: func(_ context.Context, args []string) error {
+		Exec: func(ctx context.Context, args []string) error {
 			if len(args) != 0 {
 				return errors.New("candidates doesn't take any arguements")
 			}
@@ -91,7 +92,9 @@ func main() {
 				return err
 			}
 
-			app := raiju.App{Client: services.Client, Log: cmdLog, Verbose: *verbose}
+			c := lightning.New(services.Client)
+			r := raiju.New(c)
+
 			request := raiju.CandidatesRequest{
 				Pubkey:              *pubkey,
 				MinCapacity:         *minCapacity,
@@ -104,11 +107,13 @@ func main() {
 				Limit:  *limit,
 			}
 
-			err = raiju.PrintCandidates(app, request)
+			nodes, err := r.Candidates(ctx, request)
 
 			if err != nil {
 				return err
 			}
+
+			raiju.PrintNodes(nodes)
 
 			return nil
 		},

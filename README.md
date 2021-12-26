@@ -9,11 +9,9 @@
 ```
 - [overview](#overview)
 - [usage](#usage)
-  - [commands](#commands)
-    - [sats](#sats)
-    - [candidates](#candidates)
+  - [sats](#sats)
+  - [candidates](#candidates)
 - [installation](#installation)
-  - [build locally](#build-locally)
 - [configuration](#configuration)
 - [node](#node)
 
