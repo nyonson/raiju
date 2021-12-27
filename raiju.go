@@ -240,7 +240,7 @@ func (r Raiju) Fees(ctx context.Context, standardFee int) error {
 	outboundFee := standardFee * 5
 
 	for _, c := range channels {
-		liquidity := c.Local / (c.Local + c.Remote) * 100
+		liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
 		fee := standardFee
 
 		if liquidity < INBOUND {
@@ -249,7 +249,7 @@ func (r Raiju) Fees(ctx context.Context, standardFee int) error {
 			fee = outboundFee
 		}
 
-		fmt.Fprintf(os.Stderr, "channel %d has liquidity %d setting fee to %d\n", c.ChannelID, liquidity, fee)
+		fmt.Fprintf(os.Stderr, "channel %d has liquidity %f setting fee to %d\n", c.ChannelID, liquidity, fee)
 		r.client.SetFees(ctx, c.ChannelID, fee)
 	}
 
