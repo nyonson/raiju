@@ -1,6 +1,6 @@
 # DESTDIR is a makefile convention for install/uninstall targets
 BINDIR		:= $(DESTDIR)/usr/bin
-VERSION		:= $(shell git describe --tags)
+VERSION		:= $(shell git describe --tags --always)
 
 ## test: run go tests
 .PHONY: test
@@ -28,5 +28,5 @@ uninstall:
 .DEFAULT_GOAL := help
 .PHONY: help
 help: Makefile
-	@echo "MASH"
+	@echo "RAIJU"
 	@sed -n 's/^##//p' $< | column -t -s ':' |  sed -e 's/^/ /'
