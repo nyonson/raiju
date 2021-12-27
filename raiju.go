@@ -226,6 +226,8 @@ func (r Raiju) Fees(ctx context.Context, standardFee int) error {
 		return err
 	}
 
+	fmt.Fprintf(os.Stderr, "channels %v\n", channels)
+
 	// Defining channel liquidity terms based on (local capacity / total capacity).
 	// When local capacity is low, there is too much inbound liquidity.
 	// When local capacity is high, there is too much outbound liquidity.
