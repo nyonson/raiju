@@ -247,6 +247,7 @@ func (r Raiju) Fees(ctx context.Context, standardFee int) error {
 			fee = outboundFee
 		}
 
+		fmt.Fprintf(os.Stderr, "setting fee rate of %d to %d", c.ChannelID, fee)
 		r.client.SetFees(ctx, c.ChannelID, fee)
 	}
 

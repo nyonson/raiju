@@ -9,8 +9,9 @@
 ```
 - [overview](#overview)
 - [usage](#usage)
-  - [sats](#sats)
   - [candidates](#candidates)
+  - [fees](#fees)
+  - [sats](#sats)
 - [installation](#installation)
 - [configuration](#configuration)
 - [node](#node)
