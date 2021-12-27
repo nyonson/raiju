@@ -24,12 +24,6 @@ uninstall:
 	@echo "uninstalling"
 	@rm -f $(BINDIR)/raiju
 
-## deploy: deploy the executable to a HOST at ~
-.PHONY: deploy
-deploy: test build
-	@test -n "$(DEPLOY_HOST)" || (echo 'A DEPLOY_HOST must be defined for deploy. Ex: make deploy DEPLOY_HOST=gemini' && exit 1)
-	@scp build/raiju $(DEPLOY_HOST):~
-
 ## help: print help message
 .DEFAULT_GOAL := help
 .PHONY: help

@@ -3,6 +3,7 @@ module git.sr.ht/~yonson/raiju
 go 1.17
 
 require (
+	github.com/btcsuite/btcd v0.21.0-beta.0.20201208033208-6bd4c64a54fa
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/lightninglabs/lndclient v0.12.0-3
 	github.com/peterbourgon/ff/v3 v3.1.2
@@ -13,7 +14,6 @@ require (
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/aead/siphash v1.0.1 // indirect
 	github.com/beorn7/perks v1.0.0 // indirect
-	github.com/btcsuite/btcd v0.21.0-beta.0.20201208033208-6bd4c64a54fa // indirect
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
 	github.com/btcsuite/btcutil/psbt v1.0.3-0.20200826194809-5f93e33af2b0 // indirect
 	github.com/btcsuite/btcwallet v0.11.1-0.20201207233335-415f37ff11a1 // indirect

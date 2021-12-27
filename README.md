@@ -29,21 +29,12 @@ All of Raiju's subcommands can be listed with the global help flag.
 raiju -h
 ```
 
-## sats
-
-Quick conversion from btc to the smaller satoshi unit. We talk in sats.
-
-```
-raiju sats .000434
-43400
-```
-
 ## candidates
 
 Lists nodes by distance descending. Theoretically these are desirable nodes to open channels to because they are well connected, but far (a.k.a. many fees) away from the current node. The `Distant Neighbors` metric is the number of channels that node has with distant nodes from the root node.
 
 ```
-raiju candidates
+$ raiju candidates
 Pubkey                                                              Alias                             Distance  Distant Neighbors  Capacity    Channels  Updated
 029ef8a775117ba63662a1d1d92b8a184bb1758ed1e12b0cdbb5e92672ef695b73  Carnivore                         4         8                  14932925    8         2021-04-21 23:17:36 -0700 PDT
 0390b5d4492dc2f5318e5233ab2cebf6d48914881a33ef6a9c6bcdbb433ad986d0  LNBIG.com [lnd-01]                3         547                2568240344  547       2021-04-22 12:20:14 -0700 PDT
@@ -52,29 +43,34 @@ Pubkey                                                              Alias       
 ...
 ```
 
-The `assume`` flag allows you to see the remaining set of nodes assuming channels were opened to a candidate. This can be used to find a set of nodes to open channels too in single batch transaction. Batch transactions minimize on onchain fees. 
+The `assume` flag allows you to see the remaining set of nodes assuming channels were opened to a candidate. This can be used to find a set of nodes to open channels too in single batch transaction in order to minimize on onchain fees.
+
+## fees
+
+Auto set channel fees based on liquidity.
+
+## sats
+
+Quick conversion from btc to the smaller satoshi unit. We talk in sats.
+
+```
+$ raiju sats .000434
+43400
+```
 
 # installation
 
 Raiju can be built and installed locally with `make`. It requires `go` on the system to be compiled. Specify a `BINDIR` to override the default directory where `make` installs the executable.
 
 ```
-git clone https://git.sr.ht/~yonson/raiju
-cd raiju
-make install
+$ git clone https://git.sr.ht/~yonson/raiju
+$ cd raiju
+$ make install
 ```
 
 # configuration
 
 All flags can be found with the help flag `-h`.
-
-```
-# list global flags and subcommands
-raiju -h
-
-# list a subcommand's flags
-raiju candidates -h
-```
 
 *Global* flags (not subcommand flags) can be set on the CLI, through environment variables, or with a configuration file. Flags overwrite environment variables which overwrite the configuration file values.
 

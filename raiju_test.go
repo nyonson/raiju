@@ -18,6 +18,8 @@ const (
 type fakeClient struct {
 	getInfo       func(ctx context.Context) (*lightning.Info, error)
 	describeGraph func(ctx context.Context) (*lightning.Graph, error)
+	listChannels  func(ctx context.Context) ([]lightning.Channel, error)
+	setFees       func(ctx context.Context, channelID uint64, fee int) error
 }
 
 func (f fakeClient) GetInfo(ctx context.Context) (*lightning.Info, error) {
@@ -44,6 +46,22 @@ func (f fakeClient) DescribeGraph(ctx context.Context) (*lightning.Graph, error)
 	return &lightning.Graph{
 		Nodes: []lightning.Node{n},
 	}, nil
+}
+
+func (f fakeClient) ListChannels(ctx context.Context) ([]lightning.Channel, error) {
+	if f.listChannels != nil {
+		return f.listChannels(ctx)
+	}
+
+	return nil, nil
+}
+
+func (f fakeClient) SetFees(ctx context.Context, channelID uint64, fee int) error {
+	if f.setFees != nil {
+		return f.setFees(ctx, channelID, fee)
+	}
+
+	return nil
 }
 
 func TestBtcToSat(t *testing.T) {

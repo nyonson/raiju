@@ -15,6 +15,8 @@ import (
 type client interface {
 	GetInfo(ctx context.Context) (*lightning.Info, error)
 	DescribeGraph(ctx context.Context) (*lightning.Graph, error)
+	ListChannels(ctx context.Context) ([]lightning.Channel, error)
+	SetFees(ctx context.Context, channelID uint64, fee int) error
 }
 
 type Raiju struct {
@@ -215,4 +217,38 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 	}
 
 	return span[:request.Limit], nil
+}
+
+// Set fees to encourage a balanced channel.
+func (r Raiju) Fees(ctx context.Context, standardFee int) error {
+	channels, err := r.client.ListChannels(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Defining channel liquidity terms based on (local capacity / total capacity).
+	// When local capacity is low, there is too much inbound liquidity.
+	// When local capacity is high, there is too much outbound liquidity.
+	const INBOUND = 20
+	const OUTBOUND = 80
+
+	// encourage relatively more outbound txs by lowering local fees
+	inboundFee := standardFee / 5
+	// encourage relatively more inbound txs by raising local fees
+	outboundFee := standardFee * 5
+
+	for _, c := range channels {
+		liquidity := c.Local / (c.Local + c.Remote) * 100
+		fee := standardFee
+
+		if liquidity < INBOUND {
+			fee = inboundFee
+		} else if liquidity > OUTBOUND {
+			fee = outboundFee
+		}
+
+		r.client.SetFees(ctx, c.ChannelID, fee)
+	}
+
+	return nil
 }

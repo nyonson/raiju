@@ -4,8 +4,12 @@ package lightning
 import (
 	"context"
 	"encoding/hex"
+	"strconv"
+	"strings"
 	"time"
 
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 	"github.com/lightninglabs/lndclient"
 )
@@ -30,6 +34,15 @@ type Graph struct {
 	Edges []Edge
 }
 
+// Detailed information of a channel between nodes.
+type Channel struct {
+	Edge
+	ChannelID uint64
+	Local     btcutil.Amount
+	Remote    btcutil.Amount
+	Fee       int64
+}
+
 // Info of a node.
 type Info struct {
 	Pubkey string
@@ -37,8 +50,11 @@ type Info struct {
 
 // lnder is the minimal requirements from LND.
 type lnder interface {
-	GetInfo(ctx context.Context) (*lndclient.Info, error)
 	DescribeGraph(ctx context.Context, includeUnannounced bool) (*lndclient.Graph, error)
+	GetChanInfo(ctx context.Context, chanId uint64) (*lndclient.ChannelEdge, error)
+	GetInfo(ctx context.Context) (*lndclient.Info, error)
+	ListChannels(ctx context.Context) ([]lndclient.ChannelInfo, error)
+	UpdateChanPolicy(ctx context.Context, req lndclient.PolicyUpdateRequest, chanPoint *wire.OutPoint) error
 }
 
 // New client.
@@ -100,4 +116,82 @@ func (lc LndClient) DescribeGraph(ctx context.Context) (*Graph, error) {
 	}
 
 	return graph, nil
+}
+
+func (lc LndClient) ListChannels(ctx context.Context) ([]Channel, error) {
+	info, err := lc.GetInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	channelInfos, err := lc.lnd.ListChannels(ctx)
+
+	if err != nil {
+		return nil, err
+	}
+
+	channels := make([]Channel, len(channelInfos))
+	for i, ci := range channelInfos {
+		ce, err := lc.lnd.GetChanInfo(ctx, ci.ChannelID)
+		if err != nil {
+			return nil, err
+		}
+
+		// get fee of local node
+		fee := ce.Node1Policy.FeeRateMilliMsat
+		if ce.Node2.String() == info.Pubkey {
+			fee = ce.Node2Policy.FeeRateMilliMsat
+		}
+
+		channels[i] = Channel{
+			Edge:      Edge{Capacity: ci.Capacity, Node1: ce.Node1.String(), Node2: ce.Node2.String()},
+			ChannelID: ci.ChannelID,
+			Local:     ci.LocalBalance,
+			Remote:    ci.RemoteBalance,
+			Fee:       fee,
+		}
+	}
+
+	return channels, nil
+}
+
+func (lc LndClient) SetFees(ctx context.Context, channelID uint64, fee int) error {
+	ce, err := lc.lnd.GetChanInfo(ctx, channelID)
+	if err != nil {
+		return err
+	}
+
+	outpoint, err := decodeChannelPoint(ce.ChannelPoint)
+	if err != nil {
+		return err
+	}
+
+	feerate := float64(fee) / 1000000
+
+	// opinionated policy
+	req := lndclient.PolicyUpdateRequest{
+		BaseFeeMsat:   0,
+		FeeRate:       feerate,
+		TimeLockDelta: 40,
+	}
+	return lc.lnd.UpdateChanPolicy(ctx, req, outpoint)
+}
+
+func decodeChannelPoint(cp string) (*wire.OutPoint, error) {
+	split := strings.SplitN(cp, ":", 2)
+
+	hash, err := chainhash.NewHashFromStr(split[0])
+	if err != nil {
+		return nil, err
+	}
+
+	index, err := strconv.ParseUint(split[1], 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	return &wire.OutPoint{
+		Hash:  *hash,
+		Index: uint32(index),
+	}, nil
 }

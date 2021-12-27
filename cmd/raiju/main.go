@@ -60,7 +60,7 @@ func main() {
 		},
 	}
 
-	candidatesFlagSet := flag.NewFlagSet("span", flag.ExitOnError)
+	candidatesFlagSet := flag.NewFlagSet("candidates", flag.ExitOnError)
 	minCapacity := candidatesFlagSet.Float64("minCapacity", float64(10000000), "Minimum capacity of a node")
 	minChannels := candidatesFlagSet.Int("minChannels", 5, "Minimum channels of a node")
 	minDistance := candidatesFlagSet.Int("minDistance", 2, "Minimum distance of a node")
@@ -119,6 +119,41 @@ func main() {
 		},
 	}
 
+	feesFlagSet := flag.NewFlagSet("fees", flag.ExitOnError)
+	standardFee := feesFlagSet.Int("standardFee", 200, "Standard fee for a balaced channel")
+
+	feesCmd := &ffcli.Command{
+		Name:       "fees",
+		ShortUsage: "raiju fees",
+		ShortHelp:  "Set channel fees based on liquidity",
+		LongHelp:   "",
+		FlagSet:    feesFlagSet,
+		Exec: func(ctx context.Context, args []string) error {
+			if len(args) != 0 {
+				return errors.New("fees does not take any args")
+			}
+
+			cfg := &lndclient.LndServicesConfig{
+				LndAddress:  *host,
+				Network:     lndclient.Network(*network),
+				MacaroonDir: *macDir,
+				TLSPath:     *tlsPath,
+			}
+			services, err := lndclient.NewLndServices(cfg)
+
+			if err != nil {
+				return err
+			}
+
+			c := lightning.New(services.Client)
+			r := raiju.New(c)
+
+			r.Fees(ctx, *standardFee)
+
+			return nil
+		},
+	}
+
 	versionCmd := &ffcli.Command{
 		Name:       "version",
 		ShortUsage: "raiju version",
@@ -136,7 +171,7 @@ func main() {
 	root := &ffcli.Command{
 		ShortUsage:  "raiju [global flags] <subcommand> [subcommand flags] [subcommand args]",
 		FlagSet:     rootFlagSet,
-		Subcommands: []*ffcli.Command{satsCmd, candidatesCmd, versionCmd},
+		Subcommands: []*ffcli.Command{candidatesCmd, feesCmd, satsCmd, versionCmd},
 		Options:     []ff.Option{ff.WithEnvVarPrefix("RAIJU"), ff.WithConfigFileFlag("config"), ff.WithConfigFileParser(ff.PlainParser), ff.WithAllowMissingConfigFile(true)},
 		Exec: func(context.Context, []string) error {
 			return flag.ErrHelp
