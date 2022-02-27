@@ -11,7 +11,6 @@
 - [usage](#usage)
   - [candidates](#candidates)
   - [fees](#fees)
-  - [sats](#sats)
 - [installation](#installation)
 - [configuration](#configuration)
 - [node](#node)
@@ -20,7 +19,7 @@
 
 Your friendly bitcoin lightning network helper.
 
-Raiju is a CLI app which sits on top of a running lightning node instance. It currently only supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation. Raiju calls out to the node for network information and then performs anaylsis for insights.
+Raiju is a CLI app which sits on top of a running lightning node instance. It currently only supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation. Raiju calls out to the node for information and then performs anaylsis for insights and node management.
 
 # usage
 
@@ -32,7 +31,9 @@ raiju -h
 
 ## candidates
 
-Lists nodes by distance descending. Theoretically these are desirable nodes to open channels to because they are well connected, but far (a.k.a. many fees) away from the current node. The `Distant Neighbors` metric is the number of channels that node has with distant nodes from the root node.
+Lists nodes by distance descending.
+
+Theoretically these are desirable nodes to open channels to because they are well connected, but far (a.k.a. many fees) away from the current node. The `Distant Neighbors` metric is the number of channels that node has with distant nodes from the root node.
 
 ```
 $ raiju candidates
@@ -48,26 +49,56 @@ The `assume` flag allows you to see the remaining set of nodes assuming channels
 
 ## fees
 
-Auto set channel fees based on liquidity.
+Auto set channel fees based on the channel's current liquidity.
 
-## sats
+The idea here is to encourage channel re-balancing through fees. If a channel has a too much local liquidity, fees are raised in order to encourage relatively more inbound transactions. Visa versa for a channel with too little local liquidity.
 
-Quick conversion from btc to the smaller satoshi unit. We talk in sats.
+The strategy for fee amounts is hardcoded (although I might try to add some more in the future) to `standardFee/5`, `standardFee`, or `standardFeex5`.
 
 ```
-$ raiju sats .000434
-43400
+$ raiju fees -standardFee=200
+```
+
+### systemd automation
+
+Automatically update fees weekly with a systemd service and timer.
+
+Example `fees.service`:
+
+```
+[Unit]
+Description=Set fees of LND node
+
+[Service]
+User=lightning
+Group=lightning
+ExecStart=/usr/local/bin/raiju fees
+```
+
+Example `fees.timer`:
+
+```
+[Unit]
+Description=Set fees weekly
+
+[Timer]
+OnCalendar=weekly
+
+[Install]
+WantedBy=timers.target
 ```
 
 # installation
 
-Raiju can be built and installed locally with `make`. It requires `go` on the system to be compiled. Specify a `BINDIR` to override the default directory where `make` installs the executable.
+Raiju requires `go` on the system to be compiled.
 
 ```
 $ git clone https://git.sr.ht/~yonson/raiju
 $ cd raiju
-$ make install
+$ go install cmd/raiju/raiju.go
 ```
+
+Some handy targets are provided in the Makefile, but do not need to be used.
 
 # configuration
 
@@ -85,4 +116,4 @@ host localhost:10009
 
 # node
 
-Are you here looking for a node to open a channel too? Well, may I offer Riaju's node! Could always use the inbound: [`02b6867b56ca1b6a4548b97b009152683fa366bfa1b14119c8f9992e1acacbe1c8`](https://1ml.com/node/02b6867b56ca1b6a4548b97b009152683fa366bfa1b14119c8f9992e1acacbe1c8)
+Are you here looking for a node to open a channel too? Well, may I offer Riaju's node! Could always use the inbound: [`02b6867b56ca1b6a4548b97b009152683fa366bfa1b14119c8f9992e1acacbe1c8`](https://amboss.space/node/02b6867b56ca1b6a4548b97b009152683fa366bfa1b14119c8f9992e1acacbe1c8)
