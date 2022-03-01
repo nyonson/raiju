@@ -226,25 +226,25 @@ func (r Raiju) Fees(ctx context.Context, standardFee int) error {
 		return err
 	}
 
-	// Defining channel liquidity terms based on (local capacity / total capacity).
-	// When local capacity is low, there is too much inbound liquidity.
-	// When local capacity is high, there is too much outbound liquidity.
-	const INBOUND = 20
-	const OUTBOUND = 80
+	// Defining channel liquidity percentage based on (local capacity / total capacity).
+	// When liquidity is low, there is too much inbound,
+	// encourage relatively more inbound txs by raising local fees.
+	// When liquidity is high, there is too much outbound,
+	// encourage relatively more outbound txs by lowering local fees.
+	const LOW_LIQUIDITY = 20
+	const HIGH_LIQUIDITY = 80
 
-	// encourage relatively more outbound txs by lowering local fees
-	inboundFee := standardFee / 5
-	// encourage relatively more inbound txs by raising local fees
-	outboundFee := standardFee * 5
+	lowLiquidityFee := standardFee * 5
+	highLiquidityFee := standardFee / 5
 
 	for _, c := range channels {
 		liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
 		fee := standardFee
 
-		if liquidity < INBOUND {
-			fee = inboundFee
-		} else if liquidity > OUTBOUND {
-			fee = outboundFee
+		if liquidity < LOW_LIQUIDITY {
+			fee = lowLiquidityFee 
+		} else if liquidity > HIGH_LIQUIDITY {
+			fee = highLiquidityFee 
 		}
 
 		fmt.Fprintf(os.Stderr, "channel %d has liquidity %f setting fee to %d\n", c.ChannelID, liquidity, fee)
