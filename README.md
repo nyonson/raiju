@@ -51,7 +51,7 @@ The `assume` flag allows you to see the remaining set of nodes assuming channels
 
 Auto set channel fees based on the channel's current liquidity.
 
-The idea here is to encourage channel re-balancing through fees. If a channel has a too much local liquidity, fees are raised in order to encourage relatively more inbound transactions. Visa versa for a channel with too little local liquidity.
+The idea here is to encourage channel re-balancing through fees. If a channel has a too much local liquidity, fees are lowered in order to encourage relatively more outbound transactions. Visa versa for a channel with too little local liquidity.
 
 The strategy for fee amounts is hardcoded (although I might try to add some more in the future) to `standardFee/5`, `standardFee`, or `standardFeex5`.
 
