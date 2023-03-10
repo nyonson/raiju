@@ -19,7 +19,7 @@
 
 Your friendly bitcoin lightning network helper.
 
-Raiju is a CLI app which sits on top of a running lightning node instance. It currently only supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation. Raiju calls out to the node for information and then performs anaylsis for insights and node management.
+Raiju is a CLI app which sits on top of a running lightning node instance. It supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation. Raiju calls out to the node for information and then performs anaylsis for insights and node management.
 
 # usage
 
@@ -97,8 +97,6 @@ $ git clone https://git.sr.ht/~yonson/raiju
 $ cd raiju
 $ go install cmd/raiju/raiju.go
 ```
-
-Some handy targets are provided in the Makefile, but do not need to be used.
 
 # configuration
 
