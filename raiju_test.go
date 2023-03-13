@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"git.sr.ht/~yonson/raiju/lightning"
+	"github.com/nyonson/raiju/lightning"
 )
 
 const (

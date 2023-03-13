@@ -9,7 +9,7 @@ import (
 
 	"github.com/btcsuite/btcutil"
 
-	"git.sr.ht/~yonson/raiju/lightning"
+	"github.com/nyonson/raiju/lightning"
 )
 
 type client interface {
@@ -234,17 +234,17 @@ func (r Raiju) Fees(ctx context.Context, standardFee int) error {
 	const LOW_LIQUIDITY = 20
 	const HIGH_LIQUIDITY = 80
 
-	lowLiquidityFee := standardFee * 10 
-	highLiquidityFee := standardFee / 10 
+	lowLiquidityFee := standardFee * 10
+	highLiquidityFee := standardFee / 10
 
 	for _, c := range channels {
 		liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
 		fee := standardFee
 
 		if liquidity < LOW_LIQUIDITY {
-			fee = lowLiquidityFee 
+			fee = lowLiquidityFee
 		} else if liquidity > HIGH_LIQUIDITY {
-			fee = highLiquidityFee 
+			fee = highLiquidityFee
 		}
 
 		fmt.Fprintf(os.Stderr, "channel %d has liquidity %f setting fee to %d\n", c.ChannelID, liquidity, fee)

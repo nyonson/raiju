@@ -1,12 +1,13 @@
-module git.sr.ht/~yonson/raiju
+module github.com/nyonson/raiju
 
-go 1.17
+go 1.20
 
 require (
+	git.sr.ht/~yonson/raiju v0.0.0-20220306042123-1e2dbb7de20e
 	github.com/btcsuite/btcd v0.21.0-beta.0.20201208033208-6bd4c64a54fa
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/lightninglabs/lndclient v0.12.0-3
-	github.com/peterbourgon/ff/v3 v3.1.2
+	github.com/peterbourgon/ff/v3 v3.3.0
 	github.com/rodaine/table v1.0.1
 )
 
@@ -83,6 +84,6 @@ require (
 	gopkg.in/errgo.v1 v1.0.1 // indirect
 	gopkg.in/macaroon-bakery.v2 v2.0.1 // indirect
 	gopkg.in/macaroon.v2 v2.1.0 // indirect
-	gopkg.in/yaml.v2 v2.2.4 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	sigs.k8s.io/yaml v1.1.0 // indirect
 )

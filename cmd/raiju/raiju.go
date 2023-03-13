@@ -16,8 +16,8 @@ import (
 	"github.com/peterbourgon/ff/v3"
 	"github.com/peterbourgon/ff/v3/ffcli"
 
-	"git.sr.ht/~yonson/raiju"
-	"git.sr.ht/~yonson/raiju/lightning"
+	"github.com/nyonson/raiju"
+	"github.com/nyonson/raiju/lightning"
 )
 
 // version is set by build tools during linking
