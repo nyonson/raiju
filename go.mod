@@ -3,7 +3,6 @@ module github.com/nyonson/raiju
 go 1.20
 
 require (
-	git.sr.ht/~yonson/raiju v0.0.0-20220306042123-1e2dbb7de20e
 	github.com/btcsuite/btcd v0.21.0-beta.0.20201208033208-6bd4c64a54fa
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/lightninglabs/lndclient v0.12.0-3
