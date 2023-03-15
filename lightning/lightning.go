@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
 	"github.com/lightninglabs/lndclient"
 )
 
@@ -53,7 +53,7 @@ type lnder interface {
 	DescribeGraph(ctx context.Context, includeUnannounced bool) (*lndclient.Graph, error)
 	GetChanInfo(ctx context.Context, chanId uint64) (*lndclient.ChannelEdge, error)
 	GetInfo(ctx context.Context) (*lndclient.Info, error)
-	ListChannels(ctx context.Context) ([]lndclient.ChannelInfo, error)
+	ListChannels(ctx context.Context, activeOnly, publicOnly bool) ([]lndclient.ChannelInfo, error)
 	UpdateChanPolicy(ctx context.Context, req lndclient.PolicyUpdateRequest, chanPoint *wire.OutPoint) error
 }
 
@@ -124,7 +124,7 @@ func (lc LndClient) ListChannels(ctx context.Context) ([]Channel, error) {
 		return nil, err
 	}
 
-	channelInfos, err := lc.lnd.ListChannels(ctx)
+	channelInfos, err := lc.lnd.ListChannels(ctx, true, true)
 
 	if err != nil {
 		return nil, err
