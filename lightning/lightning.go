@@ -58,19 +58,19 @@ type lnder interface {
 }
 
 // New client.
-func New(lnd lnder) LndClient {
-	return LndClient{
+func New(lnd lnder) Lightning {
+	return Lightning{
 		lnd: lnd,
 	}
 }
 
 // Lightning client backed by LND node.
-type LndClient struct {
+type Lightning struct {
 	lnd lnder
 }
 
-func (lc LndClient) GetInfo(ctx context.Context) (*Info, error) {
-	i, err := lc.lnd.GetInfo(ctx)
+func (l Lightning) GetInfo(ctx context.Context) (*Info, error) {
+	i, err := l.lnd.GetInfo(ctx)
 
 	if err != nil {
 		return &Info{}, err
@@ -83,8 +83,8 @@ func (lc LndClient) GetInfo(ctx context.Context) (*Info, error) {
 	return &info, nil
 }
 
-func (lc LndClient) DescribeGraph(ctx context.Context) (*Graph, error) {
-	g, err := lc.lnd.DescribeGraph(ctx, false)
+func (l Lightning) DescribeGraph(ctx context.Context) (*Graph, error) {
+	g, err := l.lnd.DescribeGraph(ctx, false)
 
 	if err != nil {
 		return &Graph{}, err
@@ -118,13 +118,13 @@ func (lc LndClient) DescribeGraph(ctx context.Context) (*Graph, error) {
 	return graph, nil
 }
 
-func (lc LndClient) ListChannels(ctx context.Context) ([]Channel, error) {
-	info, err := lc.GetInfo(ctx)
+func (l Lightning) ListChannels(ctx context.Context) ([]Channel, error) {
+	info, err := l.GetInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	channelInfos, err := lc.lnd.ListChannels(ctx, true, true)
+	channelInfos, err := l.lnd.ListChannels(ctx, true, true)
 
 	if err != nil {
 		return nil, err
@@ -132,7 +132,7 @@ func (lc LndClient) ListChannels(ctx context.Context) ([]Channel, error) {
 
 	channels := make([]Channel, len(channelInfos))
 	for i, ci := range channelInfos {
-		ce, err := lc.lnd.GetChanInfo(ctx, ci.ChannelID)
+		ce, err := l.lnd.GetChanInfo(ctx, ci.ChannelID)
 		if err != nil {
 			return nil, err
 		}
@@ -155,8 +155,8 @@ func (lc LndClient) ListChannels(ctx context.Context) ([]Channel, error) {
 	return channels, nil
 }
 
-func (lc LndClient) SetFees(ctx context.Context, channelID uint64, fee int) error {
-	ce, err := lc.lnd.GetChanInfo(ctx, channelID)
+func (l Lightning) SetFees(ctx context.Context, channelID uint64, fee int) error {
+	ce, err := l.lnd.GetChanInfo(ctx, channelID)
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func (lc LndClient) SetFees(ctx context.Context, channelID uint64, fee int) erro
 		FeeRate:       feerate,
 		TimeLockDelta: 40,
 	}
-	return lc.lnd.UpdateChanPolicy(ctx, req, outpoint)
+	return l.lnd.UpdateChanPolicy(ctx, req, outpoint)
 }
 
 func decodeChannelPoint(cp string) (*wire.OutPoint, error) {

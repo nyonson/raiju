@@ -11,7 +11,7 @@ import (
 	"github.com/nyonson/raiju/lightning"
 )
 
-type client interface {
+type lightninger interface {
 	GetInfo(ctx context.Context) (*lightning.Info, error)
 	DescribeGraph(ctx context.Context) (*lightning.Graph, error)
 	ListChannels(ctx context.Context) ([]lightning.Channel, error)
@@ -19,12 +19,12 @@ type client interface {
 }
 
 type Raiju struct {
-	client client
+	l lightninger
 }
 
-func New(client client) Raiju {
+func New(l lightninger) Raiju {
 	return Raiju{
-		client: client,
+		l: l,
 	}
 }
 
@@ -94,7 +94,7 @@ type CandidatesRequest struct {
 func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]RelativeNode, error) {
 	// default root node to local if no key supplied
 	if request.Pubkey == "" {
-		info, err := r.client.GetInfo(ctx)
+		info, err := r.l.GetInfo(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +103,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 	}
 
 	// pull entire network graph from lnd
-	channelGraph, err := r.client.DescribeGraph(ctx)
+	channelGraph, err := r.l.DescribeGraph(ctx)
 
 	if err != nil {
 		return nil, err
@@ -220,7 +220,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 
 // Set fees to encourage a balanced channel.
 func (r Raiju) Fees(ctx context.Context, standardFee int) error {
-	channels, err := r.client.ListChannels(ctx)
+	channels, err := r.l.ListChannels(ctx)
 	if err != nil {
 		return err
 	}
@@ -247,7 +247,7 @@ func (r Raiju) Fees(ctx context.Context, standardFee int) error {
 		}
 
 		fmt.Fprintf(os.Stderr, "channel %d has liquidity %f setting fee to %d\n", c.ChannelID, liquidity, fee)
-		r.client.SetFees(ctx, c.ChannelID, fee)
+		r.l.SetFees(ctx, c.ChannelID, fee)
 	}
 
 	return nil

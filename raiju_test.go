@@ -15,14 +15,14 @@ const (
 	rootUpdated = "2020-01-02T15:04:05Z"
 )
 
-type fakeClient struct {
+type fakeLightninger struct {
 	getInfo       func(ctx context.Context) (*lightning.Info, error)
 	describeGraph func(ctx context.Context) (*lightning.Graph, error)
 	listChannels  func(ctx context.Context) ([]lightning.Channel, error)
 	setFees       func(ctx context.Context, channelID uint64, fee int) error
 }
 
-func (f fakeClient) GetInfo(ctx context.Context) (*lightning.Info, error) {
+func (f fakeLightninger) GetInfo(ctx context.Context) (*lightning.Info, error) {
 	if f.getInfo != nil {
 		return f.getInfo(ctx)
 	}
@@ -32,7 +32,7 @@ func (f fakeClient) GetInfo(ctx context.Context) (*lightning.Info, error) {
 	}, nil
 }
 
-func (f fakeClient) DescribeGraph(ctx context.Context) (*lightning.Graph, error) {
+func (f fakeLightninger) DescribeGraph(ctx context.Context) (*lightning.Graph, error) {
 	if f.describeGraph != nil {
 		return f.describeGraph(ctx)
 	}
@@ -48,7 +48,7 @@ func (f fakeClient) DescribeGraph(ctx context.Context) (*lightning.Graph, error)
 	}, nil
 }
 
-func (f fakeClient) ListChannels(ctx context.Context) ([]lightning.Channel, error) {
+func (f fakeLightninger) ListChannels(ctx context.Context) ([]lightning.Channel, error) {
 	if f.listChannels != nil {
 		return f.listChannels(ctx)
 	}
@@ -56,7 +56,7 @@ func (f fakeClient) ListChannels(ctx context.Context) ([]lightning.Channel, erro
 	return nil, nil
 }
 
-func (f fakeClient) SetFees(ctx context.Context, channelID uint64, fee int) error {
+func (f fakeLightninger) SetFees(ctx context.Context, channelID uint64, fee int) error {
 	if f.setFees != nil {
 		return f.setFees(ctx, channelID, fee)
 	}
@@ -73,7 +73,7 @@ func TestBtcToSat(t *testing.T) {
 
 func TestRaiju_Candidates(t *testing.T) {
 	type fields struct {
-		client client
+		l lightninger
 	}
 	type args struct {
 		ctx     context.Context
@@ -89,7 +89,7 @@ func TestRaiju_Candidates(t *testing.T) {
 		{
 			name: "zero graph",
 			fields: fields{
-				client: fakeClient{},
+				l: fakeLightninger{},
 			},
 			args: args{
 				request: CandidatesRequest{},
@@ -101,7 +101,7 @@ func TestRaiju_Candidates(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := Raiju{
-				client: tt.fields.client,
+				l: tt.fields.l,
 			}
 			got, err := r.Candidates(tt.args.ctx, tt.args.request)
 			if (err != nil) != tt.wantErr {
