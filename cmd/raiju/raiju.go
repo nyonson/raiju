@@ -58,13 +58,14 @@ func main() {
 	}
 
 	candidatesFlagSet := flag.NewFlagSet("candidates", flag.ExitOnError)
-	minCapacity := candidatesFlagSet.Float64("minCapacity", float64(10000000), "Minimum capacity of a node")
-	minChannels := candidatesFlagSet.Int("minChannels", 5, "Minimum channels of a node")
-	minDistance := candidatesFlagSet.Int("minDistance", 2, "Minimum distance of a node")
-	minNeighborDistance := candidatesFlagSet.Int("minNeighborDistance", 2, "Minimum distance of a neighbor node")
+	minCapacity := candidatesFlagSet.Int64("minCapacity", 10000000, "Minimum capacity of a node")
+	minChannels := candidatesFlagSet.Int64("minChannels", 5, "Minimum channels of a node")
+	minDistance := candidatesFlagSet.Int64("minDistance", 2, "Minimum distance of a node")
+	minNeighborDistance := candidatesFlagSet.Int64("minNeighborDistance", 2, "Minimum distance of a neighbor node")
 	pubkey := candidatesFlagSet.String("pubkey", "", "Node to span out from, defaults to lnd's")
 	assume := candidatesFlagSet.String("assume", "", "Comma separated pubkeys to assume channels too")
-	limit := candidatesFlagSet.Int("limit", 100, "Number of results")
+	limit := candidatesFlagSet.Int64("limit", 100, "Number of results")
+	clearnet := candidatesFlagSet.Bool("clearnet", true, "Filter tor-only nodes")
 
 	candidatesCmd := &ffcli.Command{
 		Name:       "candidates",
@@ -100,8 +101,9 @@ func main() {
 				MinNeighborDistance: *minNeighborDistance,
 				MinUpdated:          time.Now().Add(-2 * 24 * time.Hour),
 				// using FieldsFunc to handle empty string case correctly
-				Assume: strings.FieldsFunc(*assume, func(c rune) bool { return c == ',' }),
-				Limit:  *limit,
+				Assume:   strings.FieldsFunc(*assume, func(c rune) bool { return c == ',' }),
+				Limit:    *limit,
+				Clearnet: *clearnet,
 			}
 
 			nodes, err := r.Candidates(ctx, request)

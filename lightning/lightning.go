@@ -14,27 +14,42 @@ import (
 	"github.com/lightninglabs/lndclient"
 )
 
-// Node in the lightning network.
+// Node in the Lightning Network.
 type Node struct {
-	PubKey  string
-	Alias   string
-	Updated time.Time
+	PubKey    string
+	Alias     string
+	Updated   time.Time
+	Addresses []string
 }
 
-// Edge between nodes in the lightning network.
+func (n Node) Clearnet() bool {
+	clearnet := false
+
+	for _, a := range n.Addresses {
+		// simple check filtering tor addresses
+		if !strings.Contains(a, "onion") {
+			clearnet = true
+		}
+
+	}
+
+	return clearnet
+}
+
+// Edge between nodes in the Lightning Network.
 type Edge struct {
 	Capacity btcutil.Amount
 	Node1    string
 	Node2    string
 }
 
-// Nodes and edges of the lightning network.
+// Nodes and edges of the Lightning Network.
 type Graph struct {
 	Nodes []Node
 	Edges []Edge
 }
 
-// Detailed information of a channel between nodes.
+// Detailed information of a payment channel between nodes.
 type Channel struct {
 	Edge
 	ChannelID uint64
@@ -94,9 +109,10 @@ func (l Lightning) DescribeGraph(ctx context.Context) (*Graph, error) {
 	nodes := make([]Node, len(g.Nodes))
 	for i, n := range g.Nodes {
 		nodes[i] = Node{
-			PubKey:  n.PubKey.String(),
-			Alias:   n.Alias,
-			Updated: n.LastUpdate,
+			PubKey:    n.PubKey.String(),
+			Alias:     n.Alias,
+			Updated:   n.LastUpdate,
+			Addresses: n.Addresses,
 		}
 	}
 

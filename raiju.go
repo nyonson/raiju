@@ -28,22 +28,27 @@ func New(l lightninger) Raiju {
 	}
 }
 
-// BtcToSat returns the btc amount in satoshis
-func BtcToSat(btc float64) int {
-	return int(btc * 100000000)
+// BtcToSat returns the bitcoin amount in satoshis
+func BtcToSat(btc float64) int64 {
+	return int64(btc * 100000000)
 }
 
-// RelativeNode has information on a node's graph charactericts relative to other nodes.
+// SatsToBtc returns the satoshis amount in bitcoin
+func SatsToBtc(sats int64) float64 {
+	return float64(sats) / 100000000
+}
+
+// RelativeNode has information on a node's graph characteristics relative to other nodes.
 type RelativeNode struct {
 	lightning.Node
-	distance        int
-	distantNeigbors int
-	channels        int
-	capacity        float64
+	distance        int64
+	distantNeigbors int64
+	channels        int64
+	capacity        int64
 	neighbors       []string
 }
 
-// sortDistance sorts nodes by distance, distant neigbors, capacity, and channels
+// sortDistance sorts nodes by distance, distant neighbors, capacity, and channels
 type sortDistance []RelativeNode
 
 func (s sortDistance) Less(i, j int) bool {
@@ -75,19 +80,21 @@ type CandidatesRequest struct {
 	// Pubkey is the key of the root node to perform crawl from
 	Pubkey string
 	// MinCapcity filters nodes with a minimum satoshi capacity (sum of channels)
-	MinCapacity float64
+	MinCapacity int64
 	// MinChannels filters nodes with a minimum number of channels
-	MinChannels int
+	MinChannels int64
 	// MinDistance filters nodes with a minumum distance (number of hops) from the root node
-	MinDistance int
+	MinDistance int64
 	// MinNeighborDistance is the distance required for a node to be considered a distanct neighbor
-	MinNeighborDistance int
+	MinNeighborDistance int64
 	// MinUpdated filters nodes which have not been updated since time
 	MinUpdated time.Time
 	// Assume channels to these pubkeys
 	Assume []string
 	// Number of results
-	Limit int
+	Limit int64
+	// Filter tor nodes
+	Clearnet bool
 }
 
 // Candidates walks the lightning network from a specific node keeping track of distance (hops).
@@ -134,8 +141,8 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 			nodes[e.Node2].neighbors = []string{e.Node1}
 		}
 
-		nodes[e.Node1].capacity += e.Capacity.ToUnit(btcutil.AmountSatoshi)
-		nodes[e.Node2].capacity += e.Capacity.ToUnit(btcutil.AmountSatoshi)
+		nodes[e.Node1].capacity += int64(e.Capacity)
+		nodes[e.Node2].capacity += int64(e.Capacity)
 
 		nodes[e.Node1].channels++
 		nodes[e.Node2].channels++
@@ -162,7 +169,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 	}
 
 	// BFS node graph to calculate distance from root node
-	count := 1
+	var count int64 = 1
 	visited := make(map[string]bool)
 
 	current := nodes[request.Pubkey].neighbors
@@ -191,7 +198,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 
 	// calculate number of distant neighbors per node
 	for i := range unfilteredSpan {
-		count := 0
+		var count int64 = 0
 		for _, n := range unfilteredSpan[i].neighbors {
 			if nodes[n].distance > request.MinNeighborDistance {
 				count++
@@ -201,24 +208,33 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 		unfilteredSpan[i].distantNeigbors = count
 	}
 
-	// filter nodes by request minimums
+	// filter nodes by request conditions
 	span := make([]RelativeNode, 0)
 	for _, v := range unfilteredSpan {
-		if v.capacity >= request.MinCapacity && v.channels >= request.MinChannels && v.distance >= request.MinDistance && v.Updated.After(request.MinUpdated) {
-			span = append(span, v)
+		if v.capacity >= request.MinCapacity &&
+			v.channels >= request.MinChannels &&
+			v.distance >= request.MinDistance &&
+			v.Updated.After(request.MinUpdated) {
+			if request.Clearnet {
+				if v.Clearnet() {
+					span = append(span, v)
+				}
+			} else {
+				span = append(span, v)
+			}
 		}
 	}
 
 	sort.Sort(sort.Reverse(sortDistance(span)))
 
-	if len(span) < request.Limit {
+	if int64(len(span)) < request.Limit {
 		return span, nil
 	}
 
 	return span[:request.Limit], nil
 }
 
-// Set fees to encourage a balanced channel.
+// Fees to encourage a balanced channel.
 func (r Raiju) Fees(ctx context.Context, standardFee int) error {
 	channels, err := r.l.ListChannels(ctx)
 	if err != nil {
