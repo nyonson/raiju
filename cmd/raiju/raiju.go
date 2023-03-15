@@ -20,9 +20,6 @@ import (
 	"github.com/nyonson/raiju/lightning"
 )
 
-// version is set by build tools during linking
-var version = "undefined"
-
 func main() {
 	cmdLog := log.New(os.Stderr, "raiju: ", 0)
 
@@ -37,8 +34,8 @@ func main() {
 
 	// lnd flags
 	host := rootFlagSet.String("host", "localhost:10009", "lnd host and port")
-	tlsPath := rootFlagSet.String("tlsPath", "", "lnd's tls cert path, defaults to lnd's default")
-	macDir := rootFlagSet.String("macDir", "", "lnd's macaroons directory, defaults to lnd's default")
+	tlsPath := rootFlagSet.String("tls-path", "", "lnd node tls certificate")
+	macPath := rootFlagSet.String("mac-path", "", "macaroon with necessary permissions for lnd node")
 	network := rootFlagSet.String("network", "mainnet", "lightning network")
 
 	satsCmd := &ffcli.Command{
@@ -81,10 +78,10 @@ func main() {
 			}
 
 			cfg := &lndclient.LndServicesConfig{
-				LndAddress:  *host,
-				Network:     lndclient.Network(*network),
-				MacaroonDir: *macDir,
-				TLSPath:     *tlsPath,
+				LndAddress:         *host,
+				Network:            lndclient.Network(*network),
+				CustomMacaroonPath: *macPath,
+				TLSPath:            *tlsPath,
 			}
 			services, err := lndclient.NewLndServices(cfg)
 
@@ -134,10 +131,10 @@ func main() {
 			}
 
 			cfg := &lndclient.LndServicesConfig{
-				LndAddress:  *host,
-				Network:     lndclient.Network(*network),
-				MacaroonDir: *macDir,
-				TLSPath:     *tlsPath,
+				LndAddress:         *host,
+				Network:            lndclient.Network(*network),
+				CustomMacaroonPath: *macPath,
+				TLSPath:            *tlsPath,
 			}
 			services, err := lndclient.NewLndServices(cfg)
 
@@ -154,24 +151,10 @@ func main() {
 		},
 	}
 
-	versionCmd := &ffcli.Command{
-		Name:       "version",
-		ShortUsage: "raiju version",
-		ShortHelp:  "Version of raiju",
-		Exec: func(_ context.Context, args []string) error {
-			if len(args) != 0 {
-				return errors.New("version does not take any args")
-			}
-
-			fmt.Fprintln(os.Stdout, version)
-			return nil
-		},
-	}
-
 	root := &ffcli.Command{
 		ShortUsage:  "raiju [global flags] <subcommand> [subcommand flags] [subcommand args]",
 		FlagSet:     rootFlagSet,
-		Subcommands: []*ffcli.Command{candidatesCmd, feesCmd, satsCmd, versionCmd},
+		Subcommands: []*ffcli.Command{candidatesCmd, feesCmd, satsCmd},
 		Options:     []ff.Option{ff.WithEnvVarPrefix("RAIJU"), ff.WithConfigFileFlag("config"), ff.WithConfigFileParser(ff.PlainParser), ff.WithAllowMissingConfigFile(true)},
 		Exec: func(context.Context, []string) error {
 			return flag.ErrHelp
