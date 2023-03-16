@@ -11,6 +11,7 @@
 - [usage](#usage)
   - [candidates](#candidates)
   - [fees](#fees)
+  - [rebalance](#rebalance)
 - [installation](#installation)
 - [configuration](#configuration)
 - [node](#node)
@@ -53,7 +54,7 @@ Auto set channel fees based on the channel's current liquidity.
 
 The idea here is to encourage channel re-balancing through fees. If a channel has a too much local liquidity, fees are lowered in order to encourage relatively more outbound transactions. Visa versa for a channel with too little local liquidity.
 
-The strategy for fee amounts is hardcoded (although I might try to add some more in the future) to `standardFee/5`, `standardFee`, or `standardFeex5`.
+The strategy for fee amounts is hardcoded (although I might try to add some more in the future) to `standardFee / 10`, `standardFee`, or `standardFee x 10`.
 
 ```
 $ raiju fees -standardFee=200
@@ -91,9 +92,64 @@ OnCalendar=weekly
 WantedBy=timers.target
 ```
 
+## rebalance
+
+Circular rebalance a channel or all channels that aren't doing so hot liquidity-wise.
+
+Where the `fees` command attempts to balance channels passively, this is an *active* approach where liquidity is manually pushed. The cost of active rebalancing are the lightning payment fees.
+
+The command takes two arguments:
+1. A percentage of the channel capacity to attempt to rebalance.
+2. The maximum ppm fee of the rebalance amount willing to be paid.
+
+If output channel and last hop node flags are specified, than just those channels will be rebalanced. The following example is pushing 1% of the channel `754031881261074944`'s capacity to the channel with the `03963169ddfcc5cc6afaff7764fa20dc2e21e9ed8ef0ff0ccd18137d62ae2e01f4` node. A max fee of `2000` will be paid. 
+
+```
+$ raiju rebalance -last-hop-pubkey 03963169ddfcc5cc6afaff7764fa20dc2e21e9ed8ef0ff0ccd18137d62ae2e01f4 -out-channel-id 754031881261074944 1 2000
+```
+
+If no out channel and last hop pubkey are given, the command will roll through all channels with high liquidity (as defined by raiju) and attempt to push it through channels of low liquidity (as defined by raiju). Be careful, there are not a lot of smarts built in to this command and it has the potential to over rebalance.
+
+```
+$ raiju rebalance 1 2000 
+```
+
+Why is the out channel a channel ID while the last hop (a.k.a. in channel) a pubkey? This is due to the lightning Network's protocol allowing for [non-strict forwarding](https://github.com/lightning/bolts/blob/master/04-onion-routing.md#non-strict-forwarding). There might be some ways to specify an in channel, but I haven't put too much thought into it yet. 
+
+### systemd automation
+
+Example `rebalance.service`:
+
+```
+[Unit]
+Description=Rebalance channels of LND node
+
+[Service]
+User=lightning
+Group=lightning
+Environment=RAIJU_HOST=localhost:10009
+Environment=RAIJU_MAC_PATH=/home/lightning/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
+Environment=RAIJU_TLS_PATH=/home/lightning/.lnd/tls.cert
+ExecStart=/usr/local/bin/raiju rebalance 1 2000 
+```
+
+Example `rebalance.timer`:
+
+```
+[Unit]
+Description=Rebalance channels daily with a wiggle so not run at the same time every day
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=43200
+
+[Install]
+WantedBy=timers.target
+```
+
 # installation
 
-Raiju requires `go` on the system to be compiled.
+Raiju requires `go` on the system to be compiled. `go install` creates a `raiju` executable.
 
 ```
 $ git clone https://git.sr.ht/~yonson/raiju
