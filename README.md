@@ -102,7 +102,7 @@ The command takes two arguments:
 1. A percentage of the channel capacity to attempt to rebalance.
 2. The maximum ppm fee of the rebalance amount willing to be paid.
 
-If output channel and last hop node flags are specified, than just those channels will be rebalanced. The following example is pushing 1% of the channel `754031881261074944`'s capacity to the channel with the `03963169ddfcc5cc6afaff7764fa20dc2e21e9ed8ef0ff0ccd18137d62ae2e01f4` node. A max fee of `2000` will be paid. 
+If output channel and last hop node flags are specified, than just those channels will be rebalanced. The following example is pushing 1% of the channel `754031881261074944`'s capacity to the channel with the `03963169ddfcc5cc6afaff7764fa20dc2e21e9ed8ef0ff0ccd18137d62ae2e01f4` node. A max fee of `2000` ppm will be paid. 
 
 ```
 $ raiju rebalance -last-hop-pubkey 03963169ddfcc5cc6afaff7764fa20dc2e21e9ed8ef0ff0ccd18137d62ae2e01f4 -out-channel-id 754031881261074944 1 2000

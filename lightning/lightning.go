@@ -29,6 +29,7 @@ type Node struct {
 	Addresses []string
 }
 
+// Clearnet is true if node has a clearnet address.
 func (n Node) Clearnet() bool {
 	clearnet := false
 
@@ -83,11 +84,12 @@ type router interface {
 	SendPayment(ctx context.Context, request lndclient.SendPaymentRequest) (chan lndclient.PaymentStatus, chan error, error)
 }
 
+// invoicer is the minimum routing requirements from LND.
 type invoicer interface {
 	AddInvoice(ctx context.Context, in *invoicesrpc.AddInvoiceData) (lntypes.Hash, string, error)
 }
 
-// New client.
+// New Lightning instance.
 func New(c channeler, i invoicer, r router) Lightning {
 	return Lightning{
 		c: c,
@@ -103,6 +105,7 @@ type Lightning struct {
 	i invoicer
 }
 
+// GetInfo of local node.
 func (l Lightning) GetInfo(ctx context.Context) (*Info, error) {
 	i, err := l.c.GetInfo(ctx)
 
@@ -117,6 +120,7 @@ func (l Lightning) GetInfo(ctx context.Context) (*Info, error) {
 	return &info, nil
 }
 
+// DescribeGraph of the Lightning Network.
 func (l Lightning) DescribeGraph(ctx context.Context) (*Graph, error) {
 	g, err := l.c.DescribeGraph(ctx, false)
 
@@ -153,6 +157,7 @@ func (l Lightning) DescribeGraph(ctx context.Context) (*Graph, error) {
 	return graph, nil
 }
 
+// GetChannel with ID.
 func (l Lightning) GetChannel(ctx context.Context, channelID uint64) (Channel, error) {
 	// lazy, but letting list channels handle the data joining and marshaling
 	channels, err := l.ListChannels(ctx)
@@ -169,6 +174,7 @@ func (l Lightning) GetChannel(ctx context.Context, channelID uint64) (Channel, e
 	return Channel{}, errors.New("no channel with that ID")
 }
 
+// ListChannels of local node.
 func (l Lightning) ListChannels(ctx context.Context) ([]Channel, error) {
 	channelInfos, err := l.c.ListChannels(ctx, true, true)
 
@@ -194,6 +200,7 @@ func (l Lightning) ListChannels(ctx context.Context) ([]Channel, error) {
 	return channels, nil
 }
 
+// SetFees for channel with rate in ppm.
 func (l Lightning) SetFees(ctx context.Context, channelID uint64, feeRate float64) error {
 	ce, err := l.c.GetChanInfo(ctx, channelID)
 	if err != nil {
@@ -214,6 +221,7 @@ func (l Lightning) SetFees(ctx context.Context, channelID uint64, feeRate float6
 	return l.c.UpdateChanPolicy(ctx, req, outpoint)
 }
 
+// AddInvoice of amount.
 func (l Lightning) AddInvoice(ctx context.Context, amount int64) (string, error) {
 	in := &invoicesrpc.AddInvoiceData{
 		Value: lnwire.NewMSatFromSatoshis(btcutil.Amount(amount)),
@@ -222,6 +230,7 @@ func (l Lightning) AddInvoice(ctx context.Context, amount int64) (string, error)
 	return invoice, err
 }
 
+// SendPayment to pay for invoice.
 func (l Lightning) SendPayment(ctx context.Context, invoice string, outChannelID uint64, lastHopPubkey string, maxFee int64) (int64, error) {
 	lhpk, err := route.NewVertexFromStr(lastHopPubkey)
 	if err != nil {
@@ -253,7 +262,7 @@ func (l Lightning) SendPayment(ctx context.Context, invoice string, outChannelID
 	}
 }
 
-// ChannelLiquidities in coarse buckets based on current state.
+// ChannelLiquidities in coarse-grained buckets based on current state.
 func ChannelLiquidities(channels []Channel) (lowLiquidityChannels []Channel, standardLiquidityChannels []Channel, highLiquidityChannels []Channel) {
 	// Defining channel liquidity percentage based on (local capacity / total capacity).
 	// When liquidity is low, there is too much inbound.
