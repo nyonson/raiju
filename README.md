@@ -54,10 +54,10 @@ Auto set channel fees based on the channel's current liquidity.
 
 The idea here is to encourage channel re-balancing through fees. If a channel has a too much local liquidity, fees are lowered in order to encourage relatively more outbound transactions. Visa versa for a channel with too little local liquidity.
 
-The strategy for fee amounts is hardcoded (although I might try to add some more in the future) to `standardFee / 10`, `standardFee`, or `standardFee x 10`.
+The strategy for fee amounts is hardcoded (although I might try to add some more in the future) to `standard-fee / 10`, `standard-fee`, or `standard-fee x 10`.
 
 ```
-$ raiju fees -standardFee=200
+$ raiju fees -standard-fee=200
 ```
 
 ### systemd automation
@@ -163,7 +163,7 @@ All flags can be found with the help flag `-h`.
 
 *Global* flags (not subcommand flags) can be set on the CLI, through environment variables, or with a configuration file. Flags overwrite environment variables which overwrite the configuration file values.
 
-Environment variables have a `RAIJU_` prefix appended to the flag name. For example, the global flag `host` can be set with the `RAIJU_HOST` environment variable.
+Environment variables have a `RAIJU_` prefix on the flag name. For example, the global flag `host` can be set with the `RAIJU_HOST` environment variable.
 
 A configuration file can be provided with the `-config` flag or the default location (for Linux it's `~/.config/raiju/config`) can be used. The configuration file format is a flag per line, whitespace delimited.
 
