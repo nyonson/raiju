@@ -72,6 +72,9 @@ Description=Set fees of LND node
 [Service]
 User=lightning
 Group=lightning
+Environment=RAIJU_HOST=localhost:10009
+Environment=RAIJU_MAC_PATH=/home/lightning/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
+Environment=RAIJU_TLS_PATH=/home/lightning/.lnd/tls.cert
 ExecStart=/usr/local/bin/raiju fees
 ```
 

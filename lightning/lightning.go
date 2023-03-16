@@ -4,6 +4,8 @@ package lightning
 import (
 	"context"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -12,6 +14,11 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/lightninglabs/lndclient"
+	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightningnetwork/lnd/lnrpc/invoicesrpc"
+	"github.com/lightningnetwork/lnd/lntypes"
+	"github.com/lightningnetwork/lnd/lnwire"
+	"github.com/lightningnetwork/lnd/routing/route"
 )
 
 // Node in the Lightning Network.
@@ -55,7 +62,6 @@ type Channel struct {
 	ChannelID uint64
 	Local     btcutil.Amount
 	Remote    btcutil.Amount
-	Fee       int64
 }
 
 // Info of a node.
@@ -63,8 +69,8 @@ type Info struct {
 	Pubkey string
 }
 
-// lnder is the minimal requirements from LND.
-type lnder interface {
+// channeler is the minimum channel requirements from LND.
+type channeler interface {
 	DescribeGraph(ctx context.Context, includeUnannounced bool) (*lndclient.Graph, error)
 	GetChanInfo(ctx context.Context, chanId uint64) (*lndclient.ChannelEdge, error)
 	GetInfo(ctx context.Context) (*lndclient.Info, error)
@@ -72,20 +78,33 @@ type lnder interface {
 	UpdateChanPolicy(ctx context.Context, req lndclient.PolicyUpdateRequest, chanPoint *wire.OutPoint) error
 }
 
+// router is the minimum routing requirements from LND.
+type router interface {
+	SendPayment(ctx context.Context, request lndclient.SendPaymentRequest) (chan lndclient.PaymentStatus, chan error, error)
+}
+
+type invoicer interface {
+	AddInvoice(ctx context.Context, in *invoicesrpc.AddInvoiceData) (lntypes.Hash, string, error)
+}
+
 // New client.
-func New(lnd lnder) Lightning {
+func New(c channeler, i invoicer, r router) Lightning {
 	return Lightning{
-		lnd: lnd,
+		c: c,
+		i: i,
+		r: r,
 	}
 }
 
 // Lightning client backed by LND node.
 type Lightning struct {
-	lnd lnder
+	c channeler
+	r router
+	i invoicer
 }
 
 func (l Lightning) GetInfo(ctx context.Context) (*Info, error) {
-	i, err := l.lnd.GetInfo(ctx)
+	i, err := l.c.GetInfo(ctx)
 
 	if err != nil {
 		return &Info{}, err
@@ -99,7 +118,7 @@ func (l Lightning) GetInfo(ctx context.Context) (*Info, error) {
 }
 
 func (l Lightning) DescribeGraph(ctx context.Context) (*Graph, error) {
-	g, err := l.lnd.DescribeGraph(ctx, false)
+	g, err := l.c.DescribeGraph(ctx, false)
 
 	if err != nil {
 		return &Graph{}, err
@@ -116,7 +135,7 @@ func (l Lightning) DescribeGraph(ctx context.Context) (*Graph, error) {
 		}
 	}
 
-	// marsholl edges
+	// marshall edges
 	edges := make([]Edge, len(g.Edges))
 	for i, e := range g.Edges {
 		edges[i] = Edge{
@@ -134,13 +153,24 @@ func (l Lightning) DescribeGraph(ctx context.Context) (*Graph, error) {
 	return graph, nil
 }
 
-func (l Lightning) ListChannels(ctx context.Context) ([]Channel, error) {
-	info, err := l.GetInfo(ctx)
+func (l Lightning) GetChannel(ctx context.Context, channelID uint64) (Channel, error) {
+	// lazy, but letting list channels handle the data joining and marshaling
+	channels, err := l.ListChannels(ctx)
 	if err != nil {
-		return nil, err
+		return Channel{}, err
 	}
 
-	channelInfos, err := l.lnd.ListChannels(ctx, true, true)
+	for _, c := range channels {
+		if c.ChannelID == channelID {
+			return c, nil
+		}
+	}
+
+	return Channel{}, errors.New("no channel with that ID")
+}
+
+func (l Lightning) ListChannels(ctx context.Context) ([]Channel, error) {
+	channelInfos, err := l.c.ListChannels(ctx, true, true)
 
 	if err != nil {
 		return nil, err
@@ -148,15 +178,9 @@ func (l Lightning) ListChannels(ctx context.Context) ([]Channel, error) {
 
 	channels := make([]Channel, len(channelInfos))
 	for i, ci := range channelInfos {
-		ce, err := l.lnd.GetChanInfo(ctx, ci.ChannelID)
+		ce, err := l.c.GetChanInfo(ctx, ci.ChannelID)
 		if err != nil {
 			return nil, err
-		}
-
-		// get fee of local node
-		fee := ce.Node1Policy.FeeRateMilliMsat
-		if ce.Node2.String() == info.Pubkey {
-			fee = ce.Node2Policy.FeeRateMilliMsat
 		}
 
 		channels[i] = Channel{
@@ -164,15 +188,14 @@ func (l Lightning) ListChannels(ctx context.Context) ([]Channel, error) {
 			ChannelID: ci.ChannelID,
 			Local:     ci.LocalBalance,
 			Remote:    ci.RemoteBalance,
-			Fee:       fee,
 		}
 	}
 
 	return channels, nil
 }
 
-func (l Lightning) SetFees(ctx context.Context, channelID uint64, fee int) error {
-	ce, err := l.lnd.GetChanInfo(ctx, channelID)
+func (l Lightning) SetFees(ctx context.Context, channelID uint64, fee int64) error {
+	ce, err := l.c.GetChanInfo(ctx, channelID)
 	if err != nil {
 		return err
 	}
@@ -190,7 +213,68 @@ func (l Lightning) SetFees(ctx context.Context, channelID uint64, fee int) error
 		FeeRate:       feerate,
 		TimeLockDelta: 40,
 	}
-	return l.lnd.UpdateChanPolicy(ctx, req, outpoint)
+	return l.c.UpdateChanPolicy(ctx, req, outpoint)
+}
+
+func (l Lightning) AddInvoice(ctx context.Context, amount int64) (string, error) {
+	in := &invoicesrpc.AddInvoiceData{
+		Value: lnwire.NewMSatFromSatoshis(btcutil.Amount(amount)),
+	}
+	_, invoice, err := l.i.AddInvoice(ctx, in)
+	return invoice, err
+}
+
+func (l Lightning) SendPayment(ctx context.Context, invoice string, outChannelID uint64, lastHopPubkey string, maxFee int64) error {
+	lhpk, err := route.NewVertexFromStr(lastHopPubkey)
+	if err != nil {
+		return err
+	}
+
+	request := lndclient.SendPaymentRequest{
+		Invoice:          invoice,
+		MaxFee:           btcutil.Amount(maxFee),
+		OutgoingChanIds:  []uint64{outChannelID},
+		LastHopPubkey:    &lhpk,
+		AllowSelfPayment: true,
+	}
+	status, error, err := l.r.SendPayment(ctx, request)
+	if err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case s := <-status:
+			if s.State == lnrpc.Payment_SUCCEEDED {
+				return nil
+			}
+		case e := <-error:
+			return fmt.Errorf("error paying invoice: %w", e)
+		}
+	}
+}
+
+// ChannelLiquidities in coarse buckets based on current state.
+func ChannelLiquidities(channels []Channel) (lowLiquidityChannels []Channel, standardLiquidityChannels []Channel, highLiquidityChannels []Channel) {
+	// Defining channel liquidity percentage based on (local capacity / total capacity).
+	// When liquidity is low, there is too much inbound.
+	// When liquidity is high, there is too much outbound.
+	const LOW_LIQUIDITY = 20
+	const HIGH_LIQUIDITY = 80
+
+	for _, c := range channels {
+		liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
+
+		if liquidity < LOW_LIQUIDITY {
+			lowLiquidityChannels = append(lowLiquidityChannels, c)
+		} else if liquidity > HIGH_LIQUIDITY {
+			highLiquidityChannels = append(highLiquidityChannels, c)
+		} else {
+			standardLiquidityChannels = append(standardLiquidityChannels, c)
+		}
+	}
+
+	return lowLiquidityChannels, standardLiquidityChannels, highLiquidityChannels
 }
 
 func decodeChannelPoint(cp string) (*wire.OutPoint, error) {

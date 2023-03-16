@@ -12,10 +12,13 @@ import (
 )
 
 type lightninger interface {
-	GetInfo(ctx context.Context) (*lightning.Info, error)
+	AddInvoice(ctx context.Context, amount int64) (string, error)
 	DescribeGraph(ctx context.Context) (*lightning.Graph, error)
+	GetInfo(ctx context.Context) (*lightning.Info, error)
+	GetChannel(ctx context.Context, channelID uint64) (lightning.Channel, error)
 	ListChannels(ctx context.Context) ([]lightning.Channel, error)
-	SetFees(ctx context.Context, channelID uint64, fee int) error
+	SendPayment(ctx context.Context, invoice string, outChannelID uint64, lastHopPubkey string, maxFee int64) error
+	SetFees(ctx context.Context, channelID uint64, fee int64) error
 }
 
 type Raiju struct {
@@ -235,36 +238,76 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 }
 
 // Fees to encourage a balanced channel.
-func (r Raiju) Fees(ctx context.Context, standardFee int) error {
+func (r Raiju) Fees(ctx context.Context, standardFee int64) error {
 	channels, err := r.l.ListChannels(ctx)
 	if err != nil {
 		return err
 	}
 
-	// Defining channel liquidity percentage based on (local capacity / total capacity).
-	// When liquidity is low, there is too much inbound,
-	// encourage relatively more inbound txs by raising local fees.
-	// When liquidity is high, there is too much outbound,
-	// encourage relatively more outbound txs by lowering local fees.
-	const LOW_LIQUIDITY = 20
-	const HIGH_LIQUIDITY = 80
+	lowLiqudityChannels, standardLiquidityChannels, highLiquidityChannels := lightning.ChannelLiquidities(channels)
 
+	// encourage relatively more inbound txs by raising local fees.
 	lowLiquidityFee := standardFee * 10
+	// encourage relatively more outbound txs by lowering local fees.
 	highLiquidityFee := standardFee / 10
 
-	for _, c := range channels {
+	for _, c := range lowLiqudityChannels {
 		liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
-		fee := standardFee
-
-		if liquidity < LOW_LIQUIDITY {
-			fee = lowLiquidityFee
-		} else if liquidity > HIGH_LIQUIDITY {
-			fee = highLiquidityFee
-		}
-
-		fmt.Fprintf(os.Stderr, "channel %d has liquidity %f setting fee to %d\n", c.ChannelID, liquidity, fee)
-		r.l.SetFees(ctx, c.ChannelID, fee)
+		fmt.Fprintf(os.Stderr, "channel %d has low liquidity %f setting fee to %d\n", c.ChannelID, liquidity, lowLiquidityFee)
+		r.l.SetFees(ctx, c.ChannelID, lowLiquidityFee)
 	}
+
+	for _, c := range standardLiquidityChannels {
+		liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
+		fmt.Fprintf(os.Stderr, "channel %d has standard liquidity %f setting fee to %d\n", c.ChannelID, liquidity, standardFee)
+		r.l.SetFees(ctx, c.ChannelID, standardFee)
+	}
+
+	for _, c := range highLiquidityChannels {
+		liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
+		fmt.Fprintf(os.Stderr, "channel %d has high liquidity %f setting fee to %d\n", c.ChannelID, liquidity, highLiquidityFee)
+		r.l.SetFees(ctx, c.ChannelID, highLiquidityFee)
+	}
+
+	return nil
+}
+
+// https://github.com/lightning/bolts/blob/master/04-onion-routing.md#non-strict-forwarding
+func (r Raiju) Rebalance(ctx context.Context, outChannelID uint64, lastHopPubkey string, percent int64, maxFee int64) error {
+	// calculate invoice value
+	c, err := r.l.GetChannel(ctx, outChannelID)
+	if err != nil {
+		return err
+	}
+
+	amount := int64(c.Capacity.ToUnit(btcutil.AmountSatoshi) * (float64(percent) / 100))
+
+	// create invoice
+	invoice, err := r.l.AddInvoice(ctx, amount)
+	if err != nil {
+		return err
+	}
+
+	// pay invoice
+	return r.l.SendPayment(ctx, invoice, outChannelID, lastHopPubkey, maxFee)
+}
+
+// RebalanceAllRequest contains necessary info to perform circular rebalance
+type RebalanceAllRequest struct {
+	// MaxFee in sats to pay for a rebalance
+	MaxFee int64
+}
+
+func (r Raiju) RebalanceAll(ctx context.Context, request RebalanceAllRequest) error {
+	// channels, err := r.l.ListChannels(ctx)
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// lowLiqudityChannels, _, highLiquidityChannels := lightning.ChannelLiquidities(channels)
+	//
+	// for _, l := range lowLiqudityChannels {
+	// }
 
 	return nil
 }

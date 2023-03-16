@@ -90,7 +90,7 @@ func main() {
 				return err
 			}
 
-			c := lightning.New(services.Client)
+			c := lightning.New(services.Client, services.Client, services.Router)
 			r := raiju.New(c)
 
 			request := raiju.CandidatesRequest{
@@ -119,12 +119,12 @@ func main() {
 	}
 
 	feesFlagSet := flag.NewFlagSet("fees", flag.ExitOnError)
-	standardFee := feesFlagSet.Int("standardFee", 200, "Standard fee for a balaced channel")
+	standardFee := feesFlagSet.Int64("standard-fee", 200, "Standard fee for a balanced channel")
 
 	feesCmd := &ffcli.Command{
 		Name:       "fees",
 		ShortUsage: "raiju fees",
-		ShortHelp:  "Set channel fees based on liquidity",
+		ShortHelp:  "Set channel fees based on liquidity to passively rebalance channels",
 		LongHelp:   "",
 		FlagSet:    feesFlagSet,
 		Exec: func(ctx context.Context, args []string) error {
@@ -144,7 +144,7 @@ func main() {
 				return err
 			}
 
-			c := lightning.New(services.Client)
+			c := lightning.New(services.Client, services.Client, services.Router)
 			r := raiju.New(c)
 
 			r.Fees(ctx, *standardFee)
@@ -153,10 +153,56 @@ func main() {
 		},
 	}
 
+	rebalanceFlagSet := flag.NewFlagSet("rebalance", flag.ExitOnError)
+	outChannelID := rebalanceFlagSet.Uint64("out-channel-id", 0, "Max fee to pay for a rebalance")
+	lastHopPubkey := candidatesFlagSet.String("last-hop-pubkey", "", "Node to span out from, defaults to lnd's")
+
+	rebalanceCmd := &ffcli.Command{
+		Name:       "rebalance",
+		ShortUsage: "raiju rebalance <percent> <max-fee>",
+		ShortHelp:  "Send circular payment(s) to actively rebalance channels",
+		LongHelp:   "",
+		FlagSet:    rebalanceFlagSet,
+		Exec: func(ctx context.Context, args []string) error {
+			if len(args) != 2 {
+				return errors.New("rebalance takes two args")
+			}
+
+			percent, err := strconv.ParseInt(args[0], 0, 64)
+			if err != nil {
+				return fmt.Errorf("unable to parse arg: %s", args[0])
+			}
+
+			maxFee, err := strconv.ParseInt(args[1], 0, 64)
+			if err != nil {
+				return fmt.Errorf("unable to parse arg: %s", args[1])
+			}
+
+			cfg := &lndclient.LndServicesConfig{
+				LndAddress:         *host,
+				Network:            lndclient.Network(*network),
+				CustomMacaroonPath: *macPath,
+				TLSPath:            *tlsPath,
+			}
+			services, err := lndclient.NewLndServices(cfg)
+
+			if err != nil {
+				return err
+			}
+
+			c := lightning.New(services.Client, services.Client, services.Router)
+			r := raiju.New(c)
+
+			r.Rebalance(ctx, *outChannelID, *lastHopPubkey, percent, maxFee)
+
+			return nil
+		},
+	}
+
 	root := &ffcli.Command{
 		ShortUsage:  "raiju [global flags] <subcommand> [subcommand flags] [subcommand args]",
 		FlagSet:     rootFlagSet,
-		Subcommands: []*ffcli.Command{candidatesCmd, feesCmd, satsCmd},
+		Subcommands: []*ffcli.Command{candidatesCmd, feesCmd, rebalanceCmd, satsCmd},
 		Options:     []ff.Option{ff.WithEnvVarPrefix("RAIJU"), ff.WithConfigFileFlag("config"), ff.WithConfigFileParser(ff.PlainParser), ff.WithAllowMissingConfigFile(true)},
 		Exec: func(context.Context, []string) error {
 			return flag.ErrHelp
