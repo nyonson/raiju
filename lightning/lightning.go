@@ -194,7 +194,7 @@ func (l Lightning) ListChannels(ctx context.Context) ([]Channel, error) {
 	return channels, nil
 }
 
-func (l Lightning) SetFees(ctx context.Context, channelID uint64, fee int64) error {
+func (l Lightning) SetFees(ctx context.Context, channelID uint64, feeRate float64) error {
 	ce, err := l.c.GetChanInfo(ctx, channelID)
 	if err != nil {
 		return err
@@ -205,12 +205,10 @@ func (l Lightning) SetFees(ctx context.Context, channelID uint64, fee int64) err
 		return err
 	}
 
-	feerate := float64(fee) / 1000000
-
 	// opinionated policy
 	req := lndclient.PolicyUpdateRequest{
 		BaseFeeMsat:   0,
-		FeeRate:       feerate,
+		FeeRate:       feeRate / 1000000,
 		TimeLockDelta: 40,
 	}
 	return l.c.UpdateChanPolicy(ctx, req, outpoint)
@@ -224,10 +222,10 @@ func (l Lightning) AddInvoice(ctx context.Context, amount int64) (string, error)
 	return invoice, err
 }
 
-func (l Lightning) SendPayment(ctx context.Context, invoice string, outChannelID uint64, lastHopPubkey string, maxFee int64) error {
+func (l Lightning) SendPayment(ctx context.Context, invoice string, outChannelID uint64, lastHopPubkey string, maxFee int64) (int64, error) {
 	lhpk, err := route.NewVertexFromStr(lastHopPubkey)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	request := lndclient.SendPaymentRequest{
@@ -236,20 +234,21 @@ func (l Lightning) SendPayment(ctx context.Context, invoice string, outChannelID
 		OutgoingChanIds:  []uint64{outChannelID},
 		LastHopPubkey:    &lhpk,
 		AllowSelfPayment: true,
+		Timeout:          time.Duration(60) * time.Second,
 	}
 	status, error, err := l.r.SendPayment(ctx, request)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	for {
 		select {
 		case s := <-status:
 			if s.State == lnrpc.Payment_SUCCEEDED {
-				return nil
+				return int64(s.Fee.ToSatoshis()), nil
 			}
 		case e := <-error:
-			return fmt.Errorf("error paying invoice: %w", e)
+			return 0, fmt.Errorf("error paying invoice: %w", e)
 		}
 	}
 }

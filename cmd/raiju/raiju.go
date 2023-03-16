@@ -58,10 +58,10 @@ func main() {
 	}
 
 	candidatesFlagSet := flag.NewFlagSet("candidates", flag.ExitOnError)
-	minCapacity := candidatesFlagSet.Int64("minCapacity", 10000000, "Minimum capacity of a node")
-	minChannels := candidatesFlagSet.Int64("minChannels", 5, "Minimum channels of a node")
-	minDistance := candidatesFlagSet.Int64("minDistance", 2, "Minimum distance of a node")
-	minNeighborDistance := candidatesFlagSet.Int64("minNeighborDistance", 2, "Minimum distance of a neighbor node")
+	minCapacity := candidatesFlagSet.Int64("min-capacity", 10000000, "Minimum capacity of a node")
+	minChannels := candidatesFlagSet.Int64("min-channels", 5, "Minimum channels of a node")
+	minDistance := candidatesFlagSet.Int64("min-distance", 2, "Minimum distance of a node")
+	minNeighborDistance := candidatesFlagSet.Int64("min-neighbor-distance", 2, "Minimum distance of a neighbor node")
 	pubkey := candidatesFlagSet.String("pubkey", "", "Node to span out from, defaults to lnd's")
 	assume := candidatesFlagSet.String("assume", "", "Comma separated pubkeys to assume channels too")
 	limit := candidatesFlagSet.Int64("limit", 100, "Number of results")
@@ -119,7 +119,7 @@ func main() {
 	}
 
 	feesFlagSet := flag.NewFlagSet("fees", flag.ExitOnError)
-	standardFee := feesFlagSet.Int64("standard-fee", 200, "Standard fee for a balanced channel")
+	standardFee := feesFlagSet.Float64("standard-fee", 200, "Standard fee rate in ppm for a balanced channel.")
 
 	feesCmd := &ffcli.Command{
 		Name:       "fees",
@@ -154,12 +154,12 @@ func main() {
 	}
 
 	rebalanceFlagSet := flag.NewFlagSet("rebalance", flag.ExitOnError)
-	outChannelID := rebalanceFlagSet.Uint64("out-channel-id", 0, "Max fee to pay for a rebalance")
-	lastHopPubkey := candidatesFlagSet.String("last-hop-pubkey", "", "Node to span out from, defaults to lnd's")
+	outChannelID := rebalanceFlagSet.Uint64("out-channel-id", 0, "Send out of channel ID. If set, must also set last-hop-pubkey.")
+	lastHopPubkey := rebalanceFlagSet.String("last-hop-pubkey", "", "Receive from node. If set, must also set out-channel-id.")
 
 	rebalanceCmd := &ffcli.Command{
 		Name:       "rebalance",
-		ShortUsage: "raiju rebalance <percent> <max-fee>",
+		ShortUsage: "raiju rebalance <percent> <max-fee-rate>",
 		ShortHelp:  "Send circular payment(s) to actively rebalance channels",
 		LongHelp:   "",
 		FlagSet:    rebalanceFlagSet,
@@ -168,12 +168,17 @@ func main() {
 				return errors.New("rebalance takes two args")
 			}
 
-			percent, err := strconv.ParseInt(args[0], 0, 64)
+			// must be set together
+			if (*lastHopPubkey != "" && *outChannelID == 0) || (*outChannelID != 0 && *lastHopPubkey == "") {
+				return errors.New("out-channel-id and last-hop-pubkey must be set together")
+			}
+
+			percent, err := strconv.ParseFloat(args[0], 64)
 			if err != nil {
 				return fmt.Errorf("unable to parse arg: %s", args[0])
 			}
 
-			maxFee, err := strconv.ParseInt(args[1], 0, 64)
+			maxFeeRate, err := strconv.ParseFloat(args[1], 64)
 			if err != nil {
 				return fmt.Errorf("unable to parse arg: %s", args[1])
 			}
@@ -185,7 +190,6 @@ func main() {
 				TLSPath:            *tlsPath,
 			}
 			services, err := lndclient.NewLndServices(cfg)
-
 			if err != nil {
 				return err
 			}
@@ -193,9 +197,13 @@ func main() {
 			c := lightning.New(services.Client, services.Client, services.Router)
 			r := raiju.New(c)
 
-			r.Rebalance(ctx, *outChannelID, *lastHopPubkey, percent, maxFee)
+			if *lastHopPubkey != "" {
+				err = r.Rebalance(ctx, *outChannelID, *lastHopPubkey, percent, maxFeeRate)
+			} else {
+				err = r.RebalanceAll(ctx, percent, maxFeeRate)
+			}
 
-			return nil
+			return err
 		},
 	}
 

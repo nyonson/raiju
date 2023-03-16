@@ -19,7 +19,19 @@ type fakeLightninger struct {
 	getInfo       func(ctx context.Context) (*lightning.Info, error)
 	describeGraph func(ctx context.Context) (*lightning.Graph, error)
 	listChannels  func(ctx context.Context) ([]lightning.Channel, error)
-	setFees       func(ctx context.Context, channelID uint64, fee int) error
+	setFees       func(ctx context.Context, channelID uint64, fee float64) error
+}
+
+func (f fakeLightninger) AddInvoice(ctx context.Context, amount int64) (string, error) {
+	return "", nil
+}
+
+func (f fakeLightninger) SendPayment(ctx context.Context, invoice string, outChannelID uint64, lastHopPubkey string, maxFee int64) (int64, error) {
+	return 0, nil
+}
+
+func (f fakeLightninger) GetChannel(ctx context.Context, channelID uint64) (lightning.Channel, error) {
+	return lightning.Channel{}, nil
 }
 
 func (f fakeLightninger) GetInfo(ctx context.Context) (*lightning.Info, error) {
@@ -56,7 +68,7 @@ func (f fakeLightninger) ListChannels(ctx context.Context) ([]lightning.Channel,
 	return nil, nil
 }
 
-func (f fakeLightninger) SetFees(ctx context.Context, channelID uint64, fee int) error {
+func (f fakeLightninger) SetFees(ctx context.Context, channelID uint64, fee float64) error {
 	if f.setFees != nil {
 		return f.setFees(ctx, channelID, fee)
 	}

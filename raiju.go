@@ -3,6 +3,7 @@ package raiju
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"sort"
 	"time"
@@ -17,8 +18,8 @@ type lightninger interface {
 	GetInfo(ctx context.Context) (*lightning.Info, error)
 	GetChannel(ctx context.Context, channelID uint64) (lightning.Channel, error)
 	ListChannels(ctx context.Context) ([]lightning.Channel, error)
-	SendPayment(ctx context.Context, invoice string, outChannelID uint64, lastHopPubkey string, maxFee int64) error
-	SetFees(ctx context.Context, channelID uint64, fee int64) error
+	SendPayment(ctx context.Context, invoice string, outChannelID uint64, lastHopPubkey string, maxFee int64) (int64, error)
+	SetFees(ctx context.Context, channelID uint64, fee float64) error
 }
 
 type Raiju struct {
@@ -238,7 +239,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 }
 
 // Fees to encourage a balanced channel.
-func (r Raiju) Fees(ctx context.Context, standardFee int64) error {
+func (r Raiju) Fees(ctx context.Context, standardFee float64) error {
 	channels, err := r.l.ListChannels(ctx)
 	if err != nil {
 		return err
@@ -253,19 +254,19 @@ func (r Raiju) Fees(ctx context.Context, standardFee int64) error {
 
 	for _, c := range lowLiqudityChannels {
 		liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
-		fmt.Fprintf(os.Stderr, "channel %d has low liquidity %f setting fee to %d\n", c.ChannelID, liquidity, lowLiquidityFee)
+		fmt.Fprintf(os.Stderr, "channel %d has low liquidity %f setting fee to %f\n", c.ChannelID, liquidity, lowLiquidityFee)
 		r.l.SetFees(ctx, c.ChannelID, lowLiquidityFee)
 	}
 
 	for _, c := range standardLiquidityChannels {
 		liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
-		fmt.Fprintf(os.Stderr, "channel %d has standard liquidity %f setting fee to %d\n", c.ChannelID, liquidity, standardFee)
+		fmt.Fprintf(os.Stderr, "channel %d has standard liquidity %f setting fee to %f\n", c.ChannelID, liquidity, standardFee)
 		r.l.SetFees(ctx, c.ChannelID, standardFee)
 	}
 
 	for _, c := range highLiquidityChannels {
 		liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
-		fmt.Fprintf(os.Stderr, "channel %d has high liquidity %f setting fee to %d\n", c.ChannelID, liquidity, highLiquidityFee)
+		fmt.Fprintf(os.Stderr, "channel %d has high liquidity %f setting fee to %f\n", c.ChannelID, liquidity, highLiquidityFee)
 		r.l.SetFees(ctx, c.ChannelID, highLiquidityFee)
 	}
 
@@ -273,14 +274,17 @@ func (r Raiju) Fees(ctx context.Context, standardFee int64) error {
 }
 
 // https://github.com/lightning/bolts/blob/master/04-onion-routing.md#non-strict-forwarding
-func (r Raiju) Rebalance(ctx context.Context, outChannelID uint64, lastHopPubkey string, percent int64, maxFee int64) error {
+func (r Raiju) Rebalance(ctx context.Context, outChannelID uint64, lastHopPubkey string, percent float64, maxFeeRate float64) error {
 	// calculate invoice value
 	c, err := r.l.GetChannel(ctx, outChannelID)
 	if err != nil {
 		return err
 	}
 
-	amount := int64(c.Capacity.ToUnit(btcutil.AmountSatoshi) * (float64(percent) / 100))
+	amount := int64(c.Capacity.ToUnit(btcutil.AmountSatoshi) * (percent / 100))
+	maxFee := int64(math.Round((maxFeeRate/1000000)*float64(amount) + 0.5))
+
+	fmt.Fprintf(os.Stderr, "attempting rebalance %d sats out of %d to %s with a %d max fee...\n", amount, outChannelID, lastHopPubkey, maxFee)
 
 	// create invoice
 	invoice, err := r.l.AddInvoice(ctx, amount)
@@ -289,25 +293,42 @@ func (r Raiju) Rebalance(ctx context.Context, outChannelID uint64, lastHopPubkey
 	}
 
 	// pay invoice
-	return r.l.SendPayment(ctx, invoice, outChannelID, lastHopPubkey, maxFee)
+	fee, err := r.l.SendPayment(ctx, invoice, outChannelID, lastHopPubkey, maxFee)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "rebalanced failed\n")
+		return err
+	}
+
+	fmt.Fprintf(os.Stderr, "rebalanced success %d sats out of %d to %s for a %d sats fee\n", amount, outChannelID, lastHopPubkey, fee)
+
+	return nil
 }
 
-// RebalanceAllRequest contains necessary info to perform circular rebalance
-type RebalanceAllRequest struct {
-	// MaxFee in sats to pay for a rebalance
-	MaxFee int64
-}
+func (r Raiju) RebalanceAll(ctx context.Context, percent float64, maxFeeRate float64) error {
+	local, err := r.l.GetInfo(ctx)
+	if err != nil {
+		return err
+	}
 
-func (r Raiju) RebalanceAll(ctx context.Context, request RebalanceAllRequest) error {
-	// channels, err := r.l.ListChannels(ctx)
-	// if err != nil {
-	// 	return err
-	// }
-	//
-	// lowLiqudityChannels, _, highLiquidityChannels := lightning.ChannelLiquidities(channels)
-	//
-	// for _, l := range lowLiqudityChannels {
-	// }
+	channels, err := r.l.ListChannels(ctx)
+	if err != nil {
+		return err
+	}
+
+	lowLiqudityChannels, _, highLiquidityChannels := lightning.ChannelLiquidities(channels)
+
+	// roll through high liquidity channels and try to push things through the low liquidity ones
+	for _, h := range highLiquidityChannels {
+		for _, l := range lowLiqudityChannels {
+			// get the non-local node of the channel
+			lastHopPubkey := l.Node1
+			if lastHopPubkey == local.Pubkey {
+				lastHopPubkey = l.Node2
+			}
+			// don't really care if error or not, just continue on
+			r.Rebalance(ctx, h.ChannelID, lastHopPubkey, percent, maxFeeRate)
+		}
+	}
 
 	return nil
 }
