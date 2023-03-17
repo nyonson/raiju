@@ -17,7 +17,7 @@ type lightninger interface {
 	DescribeGraph(ctx context.Context) (*lightning.Graph, error)
 	GetInfo(ctx context.Context) (*lightning.Info, error)
 	GetChannel(ctx context.Context, channelID uint64) (lightning.Channel, error)
-	ListChannels(ctx context.Context) ([]lightning.Channel, error)
+	ListChannels(ctx context.Context) (lightning.Channels, error)
 	SendPayment(ctx context.Context, invoice string, outChannelID uint64, lastHopPubkey string, maxFee int64) (int64, error)
 	SetFees(ctx context.Context, channelID uint64, fee float64) error
 }
@@ -314,31 +314,22 @@ func (r Raiju) RebalanceAll(ctx context.Context, percent float64, maxFeeRate flo
 	}
 
 	// Roll through high liquidity channels and try to push things through the low liquidity ones.
-	// This algo is not very smart so there is a lot of re-pulling channel state to make sure Liquidity
-	// pushing is still needed.
-	for _, h := range channels {
-		uh, err := r.l.GetChannel(ctx, h.ChannelID)
-		if err != nil {
-			return err
-		}
+	for _, h := range channels.HighLiquidity() {
+		for _, l := range channels.LowLiquidity() {
+			// get the non-local node of the channel
+			lastHopPubkey := l.Node1
+			if lastHopPubkey == local.Pubkey {
+				lastHopPubkey = l.Node2
+			}
 
-		if uh.Liquidity() == lightning.HighLiquidity {
-			for _, l := range channels {
-				ul, err := r.l.GetChannel(ctx, l.ChannelID)
-				if err != nil {
-					return err
-				}
-
-				if ul.Liquidity() == lightning.LowLiquidity {
-					// get the non-local node of the channel
-					lastHopPubkey := l.Node1
-					if lastHopPubkey == local.Pubkey {
-						lastHopPubkey = l.Node2
-					}
-
-					// don't really care if error or not, just continue on
-					r.Rebalance(ctx, h.ChannelID, lastHopPubkey, percent, maxFeeRate)
-				}
+			// Check that the channel is still low on liquidity since rebalancing started
+			ul, err := r.l.GetChannel(ctx, l.ChannelID)
+			if err != nil {
+				return err
+			}
+			if ul.Liquidity() == lightning.LowLiquidity {
+				// don't really care if error or not, just continue on
+				r.Rebalance(ctx, h.ChannelID, lastHopPubkey, percent, maxFeeRate)
 			}
 		}
 	}

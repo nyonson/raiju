@@ -94,6 +94,35 @@ func (c Channel) Liquidity() ChannelLiquidity {
 	return StandardLiquidity
 }
 
+// Channels of node.
+type Channels []Channel
+
+// LowLiquidity channels of node.
+func (cs Channels) LowLiquidity() Channels {
+	ll := make(Channels, 0)
+
+	for _, c := range cs {
+		if c.Liquidity() == LowLiquidity {
+			ll = append(ll, c)
+		}
+	}
+
+	return ll
+}
+
+// HighLiquidity channels of node.
+func (cs Channels) HighLiquidity() Channels {
+	hl := make(Channels, 0)
+
+	for _, c := range cs {
+		if c.Liquidity() == HighLiquidity {
+			hl = append(hl, c)
+		}
+	}
+
+	return hl
+}
+
 // Info of a node.
 type Info struct {
 	Pubkey string
@@ -204,7 +233,7 @@ func (l Lightning) GetChannel(ctx context.Context, channelID uint64) (Channel, e
 }
 
 // ListChannels of local node.
-func (l Lightning) ListChannels(ctx context.Context) ([]Channel, error) {
+func (l Lightning) ListChannels(ctx context.Context) (Channels, error) {
 	channelInfos, err := l.c.ListChannels(ctx, true, true)
 
 	if err != nil {

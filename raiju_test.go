@@ -18,7 +18,7 @@ const (
 type fakeLightninger struct {
 	getInfo       func(ctx context.Context) (*lightning.Info, error)
 	describeGraph func(ctx context.Context) (*lightning.Graph, error)
-	listChannels  func(ctx context.Context) ([]lightning.Channel, error)
+	listChannels  func(ctx context.Context) (lightning.Channels, error)
 	setFees       func(ctx context.Context, channelID uint64, fee float64) error
 }
 
@@ -60,7 +60,7 @@ func (f fakeLightninger) DescribeGraph(ctx context.Context) (*lightning.Graph, e
 	}, nil
 }
 
-func (f fakeLightninger) ListChannels(ctx context.Context) ([]lightning.Channel, error) {
+func (f fakeLightninger) ListChannels(ctx context.Context) (lightning.Channels, error) {
 	if f.listChannels != nil {
 		return f.listChannels(ctx)
 	}
