@@ -71,11 +71,11 @@ func main() {
 		Name:       "candidates",
 		ShortUsage: "raiju candidates",
 		ShortHelp:  "List candidate nodes by distance from node and centralization",
-		LongHelp:   "Nodes are listed in decending order based on a few calculated metrics. The dominant metric is distance from the root node. Next is 'distant neighbors' which is the number of direct neighbors a node has that are distant from the root node.",
+		LongHelp:   "Nodes are listed in descending order based on a few calculated metrics. The dominant metric is distance from the root node. Next is 'distant neighbors' which is the number of direct neighbors a node has that are distant from the root node.",
 		FlagSet:    candidatesFlagSet,
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) != 0 {
-				return errors.New("candidates doesn't take any arguements")
+				return errors.New("candidates doesn't take any arguments")
 			}
 
 			cfg := &lndclient.LndServicesConfig{
@@ -119,13 +119,13 @@ func main() {
 	}
 
 	feesFlagSet := flag.NewFlagSet("fees", flag.ExitOnError)
-	standardFee := feesFlagSet.Float64("standard-fee", 200, "Standard fee rate in ppm for a balanced channel.")
+	standardFee := feesFlagSet.Float64("standard-fee", 200, "Standard fee rate in ppm for a balanced channel")
 
 	feesCmd := &ffcli.Command{
 		Name:       "fees",
 		ShortUsage: "raiju fees",
 		ShortHelp:  "Set channel fees based on liquidity to passively rebalance channels",
-		LongHelp:   "",
+		LongHelp:   "Channels are grouped into three coarse grained buckets: standard, high, and low. Channels with standard liquidity will have the standard fee applied. Channels with high liquidity will have a 10x the standard fee applied to discourage routing. And channels with low liquidity will have 1/10 the standard fee applied to encourage routing.",
 		FlagSet:    feesFlagSet,
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) != 0 {
@@ -154,14 +154,14 @@ func main() {
 	}
 
 	rebalanceFlagSet := flag.NewFlagSet("rebalance", flag.ExitOnError)
-	outChannelID := rebalanceFlagSet.Uint64("out-channel-id", 0, "Send out of channel ID. If set, must also set last-hop-pubkey.")
-	lastHopPubkey := rebalanceFlagSet.String("last-hop-pubkey", "", "Receive from node. If set, must also set out-channel-id.")
+	outChannelID := rebalanceFlagSet.Uint64("out-channel-id", 0, "Send out of channel ID")
+	lastHopPubkey := rebalanceFlagSet.String("last-hop-pubkey", "", "Receive from node")
 
 	rebalanceCmd := &ffcli.Command{
 		Name:       "rebalance",
 		ShortUsage: "raiju rebalance <percent> <max-fee-rate>",
 		ShortHelp:  "Send circular payment(s) to actively rebalance channels",
-		LongHelp:   "",
+		LongHelp:   "If the output and input flags are set, a rebalance is attempted (both must be set together). If not, channels are grouped into three coarse grained buckets: standard, high, and low. Standard channels will be ignored since their liquidity is good. High channels will attempt to push the percent of their capacity in liquidity at a time to the low channels, stopping if their liquidity improves enough or if all channels have been tried.",
 		FlagSet:    rebalanceFlagSet,
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) != 2 {
