@@ -13,13 +13,13 @@ import (
 )
 
 type lightninger interface {
-	AddInvoice(ctx context.Context, amount int64) (string, error)
+	AddInvoice(ctx context.Context, amount lightning.Satoshi) (string, error)
 	DescribeGraph(ctx context.Context) (*lightning.Graph, error)
 	GetInfo(ctx context.Context) (*lightning.Info, error)
 	GetChannel(ctx context.Context, channelID uint64) (lightning.Channel, error)
 	ListChannels(ctx context.Context) (lightning.Channels, error)
-	SendPayment(ctx context.Context, invoice string, outChannelID uint64, lastHopPubkey string, maxFee int64) (int64, error)
-	SetFees(ctx context.Context, channelID uint64, fee float64) error
+	SendPayment(ctx context.Context, invoice string, outChannelID uint64, lastHopPubkey string, maxFee lightning.Satoshi) (lightning.Satoshi, error)
+	SetFees(ctx context.Context, channelID uint64, fee lightning.FeePPM) error
 }
 
 type Raiju struct {
@@ -30,16 +30,6 @@ func New(l lightninger) Raiju {
 	return Raiju{
 		l: l,
 	}
-}
-
-// BtcToSat returns the bitcoin amount in satoshis
-func BtcToSat(btc float64) int64 {
-	return int64(btc * 100000000)
-}
-
-// SatsToBtc returns the satoshis amount in bitcoin
-func SatsToBtc(sats int64) float64 {
-	return float64(sats) / 100000000
 }
 
 // RelativeNode has information on a node's graph characteristics relative to other nodes.
@@ -239,7 +229,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 }
 
 // Fees to encourage a balanced channel.
-func (r Raiju) Fees(ctx context.Context, standardFee float64) error {
+func (r Raiju) Fees(ctx context.Context, standardFee lightning.FeePPM) error {
 	channels, err := r.l.ListChannels(ctx)
 	if err != nil {
 		return err
@@ -272,7 +262,7 @@ func (r Raiju) Fees(ctx context.Context, standardFee float64) error {
 }
 
 // https://github.com/lightning/bolts/blob/master/04-onion-routing.md#non-strict-forwarding
-func (r Raiju) Rebalance(ctx context.Context, outChannelID uint64, lastHopPubkey string, percent float64, maxFeeRate float64) error {
+func (r Raiju) Rebalance(ctx context.Context, outChannelID uint64, lastHopPubkey string, percent float64, max lightning.FeePPM) error {
 	// calculate invoice value
 	c, err := r.l.GetChannel(ctx, outChannelID)
 	if err != nil {
@@ -280,18 +270,19 @@ func (r Raiju) Rebalance(ctx context.Context, outChannelID uint64, lastHopPubkey
 	}
 
 	amount := int64(c.Capacity.ToUnit(btcutil.AmountSatoshi) * (percent / 100))
-	maxFee := int64(math.Round((maxFeeRate/1000000)*float64(amount) + 0.5))
+	// add 0.5 so rounds up to at least 1
+	maxFee := int64(math.Round(max.Rate()*float64(amount) + 0.5))
 
 	fmt.Fprintf(os.Stderr, "attempting rebalance %d sats out of %d to %s with a %d max fee...\n", amount, outChannelID, lastHopPubkey, maxFee)
 
 	// create invoice
-	invoice, err := r.l.AddInvoice(ctx, amount)
+	invoice, err := r.l.AddInvoice(ctx, lightning.Satoshi(amount))
 	if err != nil {
 		return err
 	}
 
 	// pay invoice
-	fee, err := r.l.SendPayment(ctx, invoice, outChannelID, lastHopPubkey, maxFee)
+	fee, err := r.l.SendPayment(ctx, invoice, outChannelID, lastHopPubkey, lightning.Satoshi(maxFee))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "rebalance failed\n")
 		return err
@@ -302,7 +293,7 @@ func (r Raiju) Rebalance(ctx context.Context, outChannelID uint64, lastHopPubkey
 	return nil
 }
 
-func (r Raiju) RebalanceAll(ctx context.Context, percent float64, maxFeeRate float64) error {
+func (r Raiju) RebalanceAll(ctx context.Context, percent float64, max lightning.FeePPM) error {
 	local, err := r.l.GetInfo(ctx)
 	if err != nil {
 		return err
@@ -329,7 +320,7 @@ func (r Raiju) RebalanceAll(ctx context.Context, percent float64, maxFeeRate flo
 			}
 			if ul.Liquidity() == lightning.LowLiquidity {
 				// don't really care if error or not, just continue on
-				r.Rebalance(ctx, h.ChannelID, lastHopPubkey, percent, maxFeeRate)
+				r.Rebalance(ctx, h.ChannelID, lastHopPubkey, percent, max)
 			}
 		}
 	}

@@ -38,25 +38,6 @@ func main() {
 	macPath := rootFlagSet.String("mac-path", "", "macaroon with necessary permissions for lnd node")
 	network := rootFlagSet.String("network", "mainnet", "lightning network")
 
-	satsCmd := &ffcli.Command{
-		Name:       "sats",
-		ShortUsage: "raiju sats <btc>",
-		ShortHelp:  "Convert bitcoins to satoshis",
-		Exec: func(_ context.Context, args []string) error {
-			if len(args) != 1 {
-				return errors.New("sats only takes one arg")
-			}
-
-			btc, err := strconv.ParseFloat(args[0], 64)
-			if err != nil {
-				return fmt.Errorf("unable to parse arg: %s", args[0])
-			}
-
-			fmt.Fprintln(os.Stdout, raiju.BtcToSat(btc))
-			return nil
-		},
-	}
-
 	candidatesFlagSet := flag.NewFlagSet("candidates", flag.ExitOnError)
 	minCapacity := candidatesFlagSet.Int64("min-capacity", 10000000, "Minimum capacity of a node")
 	minChannels := candidatesFlagSet.Int64("min-channels", 5, "Minimum channels of a node")
@@ -147,7 +128,7 @@ func main() {
 			c := lightning.New(services.Client, services.Client, services.Router)
 			r := raiju.New(c)
 
-			r.Fees(ctx, *standardFee)
+			r.Fees(ctx, lightning.FeePPM(*standardFee))
 
 			return nil
 		},
@@ -159,7 +140,7 @@ func main() {
 
 	rebalanceCmd := &ffcli.Command{
 		Name:       "rebalance",
-		ShortUsage: "raiju rebalance <percent> <max-fee-rate>",
+		ShortUsage: "raiju rebalance <percent> <max-fee-ppm>",
 		ShortHelp:  "Send circular payment(s) to actively rebalance channels",
 		LongHelp:   "If the output and input flags are set, a rebalance is attempted (both must be set together). If not, channels are grouped into three coarse grained buckets: standard, high, and low. Standard channels will be ignored since their liquidity is good. High channels will attempt to push the percent of their capacity in liquidity at a time to the low channels, stopping if their liquidity improves enough or if all channels have been tried.",
 		FlagSet:    rebalanceFlagSet,
@@ -178,7 +159,7 @@ func main() {
 				return fmt.Errorf("unable to parse arg: %s", args[0])
 			}
 
-			maxFeeRate, err := strconv.ParseFloat(args[1], 64)
+			maxFeePPM, err := strconv.ParseFloat(args[1], 64)
 			if err != nil {
 				return fmt.Errorf("unable to parse arg: %s", args[1])
 			}
@@ -198,9 +179,9 @@ func main() {
 			r := raiju.New(c)
 
 			if *lastHopPubkey != "" {
-				err = r.Rebalance(ctx, *outChannelID, *lastHopPubkey, percent, maxFeeRate)
+				err = r.Rebalance(ctx, *outChannelID, *lastHopPubkey, percent, lightning.FeePPM(maxFeePPM))
 			} else {
-				err = r.RebalanceAll(ctx, percent, maxFeeRate)
+				err = r.RebalanceAll(ctx, percent, lightning.FeePPM(maxFeePPM))
 			}
 
 			return err
@@ -210,7 +191,7 @@ func main() {
 	root := &ffcli.Command{
 		ShortUsage:  "raiju [global flags] <subcommand> [subcommand flags] [subcommand args]",
 		FlagSet:     rootFlagSet,
-		Subcommands: []*ffcli.Command{candidatesCmd, feesCmd, rebalanceCmd, satsCmd},
+		Subcommands: []*ffcli.Command{candidatesCmd, feesCmd, rebalanceCmd},
 		Options:     []ff.Option{ff.WithEnvVarPrefix("RAIJU"), ff.WithConfigFileFlag("config"), ff.WithConfigFileParser(ff.PlainParser), ff.WithAllowMissingConfigFile(true)},
 		Exec: func(context.Context, []string) error {
 			return flag.ErrHelp

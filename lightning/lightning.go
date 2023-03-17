@@ -4,7 +4,6 @@ package lightning
 import (
 	"context"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -20,6 +19,20 @@ import (
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/routing/route"
 )
+
+// Satoshi unit of bitcoin.
+type Satoshi int64
+
+func (s Satoshi) BTC() float64 {
+	return float64(s) / 100000000
+}
+
+// FeePPM is the channel fee in part per million.
+type FeePPM float64
+
+func (f FeePPM) Rate() float64 {
+	return float64(f) / 1000000
+}
 
 // Node in the Lightning Network.
 type Node struct {
@@ -217,19 +230,32 @@ func (l Lightning) DescribeGraph(ctx context.Context) (*Graph, error) {
 
 // GetChannel with ID.
 func (l Lightning) GetChannel(ctx context.Context, channelID uint64) (Channel, error) {
-	// lazy, but letting list channels handle the data joining and marshaling
-	channels, err := l.ListChannels(ctx)
+	// returns a channel edge which doesn't have liquidity info
+	ce, err := l.c.GetChanInfo(ctx, channelID)
 	if err != nil {
 		return Channel{}, err
 	}
 
-	for _, c := range channels {
-		if c.ChannelID == channelID {
-			return c, nil
-		}
+	c := Channel{
+		Edge:      Edge{Capacity: ce.Capacity, Node1: ce.Node1.String(), Node2: ce.Node2.String()},
+		ChannelID: ce.ChannelID,
 	}
 
-	return Channel{}, errors.New("no channel with that ID")
+	// get local and remote liquidity from the list channels call
+	cs, err := l.c.ListChannels(ctx, false, false)
+	if err != nil {
+		return Channel{}, err
+	}
+
+	for _, ci := range cs {
+		if ci.ChannelID == channelID {
+			c.Local = ci.LocalBalance
+			c.Remote = ci.RemoteBalance
+		}
+
+	}
+
+	return c, nil
 }
 
 // ListChannels of local node.
@@ -259,7 +285,7 @@ func (l Lightning) ListChannels(ctx context.Context) (Channels, error) {
 }
 
 // SetFees for channel with rate in ppm.
-func (l Lightning) SetFees(ctx context.Context, channelID uint64, feeRate float64) error {
+func (l Lightning) SetFees(ctx context.Context, channelID uint64, fee FeePPM) error {
 	ce, err := l.c.GetChanInfo(ctx, channelID)
 	if err != nil {
 		return err
@@ -273,14 +299,14 @@ func (l Lightning) SetFees(ctx context.Context, channelID uint64, feeRate float6
 	// opinionated policy
 	req := lndclient.PolicyUpdateRequest{
 		BaseFeeMsat:   0,
-		FeeRate:       feeRate / 1000000,
+		FeeRate:       fee.Rate(),
 		TimeLockDelta: 40,
 	}
 	return l.c.UpdateChanPolicy(ctx, req, outpoint)
 }
 
 // AddInvoice of amount.
-func (l Lightning) AddInvoice(ctx context.Context, amount int64) (string, error) {
+func (l Lightning) AddInvoice(ctx context.Context, amount Satoshi) (string, error) {
 	in := &invoicesrpc.AddInvoiceData{
 		Value: lnwire.NewMSatFromSatoshis(btcutil.Amount(amount)),
 	}
@@ -289,7 +315,7 @@ func (l Lightning) AddInvoice(ctx context.Context, amount int64) (string, error)
 }
 
 // SendPayment to pay for invoice.
-func (l Lightning) SendPayment(ctx context.Context, invoice string, outChannelID uint64, lastHopPubkey string, maxFee int64) (int64, error) {
+func (l Lightning) SendPayment(ctx context.Context, invoice string, outChannelID uint64, lastHopPubkey string, maxFee Satoshi) (Satoshi, error) {
 	lhpk, err := route.NewVertexFromStr(lastHopPubkey)
 	if err != nil {
 		return 0, err
@@ -312,7 +338,7 @@ func (l Lightning) SendPayment(ctx context.Context, invoice string, outChannelID
 		select {
 		case s := <-status:
 			if s.State == lnrpc.Payment_SUCCEEDED {
-				return int64(s.Fee.ToSatoshis()), nil
+				return Satoshi(s.Fee.ToSatoshis()), nil
 			}
 		case e := <-error:
 			return 0, fmt.Errorf("error paying invoice: %w", e)
