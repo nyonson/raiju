@@ -245,29 +245,27 @@ func (r Raiju) Fees(ctx context.Context, standardFee float64) error {
 		return err
 	}
 
-	lowLiqudityChannels, standardLiquidityChannels, highLiquidityChannels := lightning.ChannelLiquidities(channels)
-
 	// encourage relatively more inbound txs by raising local fees.
 	lowLiquidityFee := standardFee * 10
 	// encourage relatively more outbound txs by lowering local fees.
 	highLiquidityFee := standardFee / 10
 
-	for _, c := range lowLiqudityChannels {
-		liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
-		fmt.Fprintf(os.Stderr, "channel %d has low liquidity %f setting fee to %f\n", c.ChannelID, liquidity, lowLiquidityFee)
-		r.l.SetFees(ctx, c.ChannelID, lowLiquidityFee)
-	}
+	for _, c := range channels {
+		switch c.Liquidity() {
+		case lightning.LowLiquidity:
+			liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
+			fmt.Fprintf(os.Stderr, "channel %d has low liquidity %f setting fee to %f\n", c.ChannelID, liquidity, lowLiquidityFee)
+			r.l.SetFees(ctx, c.ChannelID, lowLiquidityFee)
+		case lightning.StandardLiquidity:
+			liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
+			fmt.Fprintf(os.Stderr, "channel %d has standard liquidity %f setting fee to %f\n", c.ChannelID, liquidity, standardFee)
+			r.l.SetFees(ctx, c.ChannelID, standardFee)
+		case lightning.HighLiquidity:
+			liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
+			fmt.Fprintf(os.Stderr, "channel %d has high liquidity %f setting fee to %f\n", c.ChannelID, liquidity, highLiquidityFee)
+			r.l.SetFees(ctx, c.ChannelID, highLiquidityFee)
+		}
 
-	for _, c := range standardLiquidityChannels {
-		liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
-		fmt.Fprintf(os.Stderr, "channel %d has standard liquidity %f setting fee to %f\n", c.ChannelID, liquidity, standardFee)
-		r.l.SetFees(ctx, c.ChannelID, standardFee)
-	}
-
-	for _, c := range highLiquidityChannels {
-		liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
-		fmt.Fprintf(os.Stderr, "channel %d has high liquidity %f setting fee to %f\n", c.ChannelID, liquidity, highLiquidityFee)
-		r.l.SetFees(ctx, c.ChannelID, highLiquidityFee)
 	}
 
 	return nil
@@ -295,11 +293,11 @@ func (r Raiju) Rebalance(ctx context.Context, outChannelID uint64, lastHopPubkey
 	// pay invoice
 	fee, err := r.l.SendPayment(ctx, invoice, outChannelID, lastHopPubkey, maxFee)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "rebalanced failed\n")
+		fmt.Fprintf(os.Stderr, "rebalance failed\n")
 		return err
 	}
 
-	fmt.Fprintf(os.Stderr, "rebalanced success %d sats out of %d to %s for a %d sats fee\n", amount, outChannelID, lastHopPubkey, fee)
+	fmt.Fprintf(os.Stderr, "rebalance success %d sats out of %d to %s for a %d sats fee\n", amount, outChannelID, lastHopPubkey, fee)
 
 	return nil
 }
@@ -315,18 +313,33 @@ func (r Raiju) RebalanceAll(ctx context.Context, percent float64, maxFeeRate flo
 		return err
 	}
 
-	lowLiqudityChannels, _, highLiquidityChannels := lightning.ChannelLiquidities(channels)
+	// Roll through high liquidity channels and try to push things through the low liquidity ones.
+	// This algo is not very smart so there is a lot of re-pulling channel state to make sure Liquidity
+	// pushing is still needed.
+	for _, h := range channels {
+		uh, err := r.l.GetChannel(ctx, h.ChannelID)
+		if err != nil {
+			return err
+		}
 
-	// roll through high liquidity channels and try to push things through the low liquidity ones
-	for _, h := range highLiquidityChannels {
-		for _, l := range lowLiqudityChannels {
-			// get the non-local node of the channel
-			lastHopPubkey := l.Node1
-			if lastHopPubkey == local.Pubkey {
-				lastHopPubkey = l.Node2
+		if uh.Liquidity() == lightning.HighLiquidity {
+			for _, l := range channels {
+				ul, err := r.l.GetChannel(ctx, l.ChannelID)
+				if err != nil {
+					return err
+				}
+
+				if ul.Liquidity() == lightning.LowLiquidity {
+					// get the non-local node of the channel
+					lastHopPubkey := l.Node1
+					if lastHopPubkey == local.Pubkey {
+						lastHopPubkey = l.Node2
+					}
+
+					// don't really care if error or not, just continue on
+					r.Rebalance(ctx, h.ChannelID, lastHopPubkey, percent, maxFeeRate)
+				}
 			}
-			// don't really care if error or not, just continue on
-			r.Rebalance(ctx, h.ChannelID, lastHopPubkey, percent, maxFeeRate)
 		}
 	}
 

@@ -57,12 +57,41 @@ type Graph struct {
 	Edges []Edge
 }
 
+// ChannelLiquidity coarse-grained buckets.
+type ChannelLiquidity string
+
+// ChannelLiquidities
+const (
+	LowLiquidity      ChannelLiquidity = "low"
+	StandardLiquidity ChannelLiquidity = "standard"
+	HighLiquidity     ChannelLiquidity = "high"
+)
+
 // Detailed information of a payment channel between nodes.
 type Channel struct {
 	Edge
 	ChannelID uint64
 	Local     btcutil.Amount
 	Remote    btcutil.Amount
+}
+
+// Liquidity of the channel.
+func (c Channel) Liquidity() ChannelLiquidity {
+	// Defining channel liquidity percentage based on (local capacity / total capacity).
+	// When liquidity is low, there is too much inbound.
+	// When liquidity is high, there is too much outbound.
+	const LOW_LIQUIDITY = 20
+	const HIGH_LIQUIDITY = 80
+
+	liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
+
+	if liquidity < LOW_LIQUIDITY {
+		return LowLiquidity
+	} else if liquidity > HIGH_LIQUIDITY {
+		return HighLiquidity
+	}
+
+	return StandardLiquidity
 }
 
 // Info of a node.
@@ -260,29 +289,6 @@ func (l Lightning) SendPayment(ctx context.Context, invoice string, outChannelID
 			return 0, fmt.Errorf("error paying invoice: %w", e)
 		}
 	}
-}
-
-// ChannelLiquidities in coarse-grained buckets based on current state.
-func ChannelLiquidities(channels []Channel) (lowLiquidityChannels []Channel, standardLiquidityChannels []Channel, highLiquidityChannels []Channel) {
-	// Defining channel liquidity percentage based on (local capacity / total capacity).
-	// When liquidity is low, there is too much inbound.
-	// When liquidity is high, there is too much outbound.
-	const LOW_LIQUIDITY = 20
-	const HIGH_LIQUIDITY = 80
-
-	for _, c := range channels {
-		liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
-
-		if liquidity < LOW_LIQUIDITY {
-			lowLiquidityChannels = append(lowLiquidityChannels, c)
-		} else if liquidity > HIGH_LIQUIDITY {
-			highLiquidityChannels = append(highLiquidityChannels, c)
-		} else {
-			standardLiquidityChannels = append(standardLiquidityChannels, c)
-		}
-	}
-
-	return lowLiquidityChannels, standardLiquidityChannels, highLiquidityChannels
 }
 
 func decodeChannelPoint(cp string) (*wire.OutPoint, error) {
