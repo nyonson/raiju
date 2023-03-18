@@ -38,7 +38,7 @@ func main() {
 	macPath := rootFlagSet.String("mac-path", "", "Macaroon with necessary permissions for lnd node")
 	network := rootFlagSet.String("network", "mainnet", "The bitcoin network")
 	// liquidity flags
-	highFeePPM := rootFlagSet.Float64("high-fee-ppm", 2000, "Default high liquidity setting shared by commands")
+	standardLiquidityFeePPM := rootFlagSet.Float64("standard-liquidity-fee-ppm", 200, "Default fee in PPM for standard liquidity channels which is shared by subcommands")
 
 	candidatesFlagSet := flag.NewFlagSet("candidates", flag.ExitOnError)
 	minCapacity := candidatesFlagSet.Int64("min-capacity", 10000000, "Minimum capacity of a node")
@@ -102,7 +102,7 @@ func main() {
 	}
 
 	feesFlagSet := flag.NewFlagSet("fees", flag.ExitOnError)
-	highFeePPMiOverride := feesFlagSet.Float64("high-fee-ppm", 0, "Override the default high fee ppm")
+	standardLiquidityFeePPMOverride := feesFlagSet.Float64("standard-liquidity-fee-ppm", 0, "Override the default standard liquidity fee ppm")
 
 	feesCmd := &ffcli.Command{
 		Name:       "fees",
@@ -130,13 +130,15 @@ func main() {
 			c := lightning.New(services.Client, services.Client, services.Router)
 			r := raiju.New(c)
 
-			// default to high fee, override with flag
-			high := *highFeePPM
-			if *highFeePPMiOverride != 0 {
-				high = *highFeePPMiOverride
+			// default to standard fee, override with flag
+			standard := *standardLiquidityFeePPM
+			if *standardLiquidityFeePPMOverride != 0 {
+				standard = *standardLiquidityFeePPMOverride
 			}
 
-			r.Fees(ctx, lightning.FeePPM(high))
+			fees := raiju.NewLiquidityFees(standard)
+
+			r.Fees(ctx, fees)
 
 			return nil
 		},
@@ -145,7 +147,7 @@ func main() {
 	rebalanceFlagSet := flag.NewFlagSet("rebalance", flag.ExitOnError)
 	outChannelID := rebalanceFlagSet.Uint64("out-channel-id", 0, "Send out of channel ID")
 	lastHopPubkey := rebalanceFlagSet.String("last-hop-pubkey", "", "Receive from node")
-	maxFeePPM := rebalanceFlagSet.Float64("max-fee-ppm", 0, "Override the default high fee ppm")
+	maxFeePPM := rebalanceFlagSet.Float64("max-fee-ppm", 0, "Override the default of low liquidity fee ppm based on global standard flag")
 
 	rebalanceCmd := &ffcli.Command{
 		Name:       "rebalance",
@@ -182,16 +184,18 @@ func main() {
 			c := lightning.New(services.Client, services.Client, services.Router)
 			r := raiju.New(c)
 
-			// default to high fee, override with flag
-			max := *highFeePPM
+			fees := raiju.NewLiquidityFees(*standardLiquidityFeePPM)
+
+			// default to low liquidity fee, override with flag
+			max := fees.Low()
 			if *maxFeePPM != 0 {
-				max = *maxFeePPM
+				max = lightning.FeePPM(*maxFeePPM)
 			}
 
 			if *lastHopPubkey != "" {
-				err = r.Rebalance(ctx, *outChannelID, *lastHopPubkey, percent, lightning.FeePPM(max))
+				err = r.Rebalance(ctx, *outChannelID, *lastHopPubkey, percent, max)
 			} else {
-				err = r.RebalanceAll(ctx, percent, lightning.FeePPM(max))
+				err = r.RebalanceAll(ctx, percent, max)
 			}
 
 			return err

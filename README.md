@@ -20,7 +20,7 @@
 
 Your friendly bitcoin lightning network helper.
 
-Raiju is a CLI app which sits on top of a lightning node. It supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation. Raiju calls out to the node for information and then performs analysis for insights and node management.
+Raiju is a CLI app which sits on top of a lightning node. It supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation. Raiju calls out to the node for information and then performs analysis for insights and management.
 
 # usage
 
@@ -54,10 +54,10 @@ Auto set channel fees based on the channel's current liquidity.
 
 The idea here is to encourage channel re-balancing through fees. If a channel has a too much local liquidity, fees are lowered in order to encourage relatively more outbound transactions. Visa versa for a channel with too little local liquidity.
 
-The strategy for fee amounts is hardcoded (although I might try to add some more in the future) to `high-fee-ppm` for channels with high liquidity, `high-fee-ppm / 10` for standard liquidity, and `high-fee-ppm / 100` for low liquidity.
+The strategy for fee amounts is hardcoded (although I might try to add some more in the future) based on the standard fee ppm flag. 
 
 ```
-$ raiju fees -high-fee-ppm 2000
+$ raiju fees -standard-liquidity-fee-ppm 200
 ```
 
 ### systemd automation
@@ -76,7 +76,7 @@ Group=lightning
 Environment=RAIJU_HOST=localhost:10009
 Environment=RAIJU_MAC_PATH=/home/lightning/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
 Environment=RAIJU_TLS_PATH=/home/lightning/.lnd/tls.cert
-Environment=RAIJU_HIGH_FEE_PPM=2000
+Environment=RAIJU_STANDARD_LIQUIDITY_FEE_PPM=200
 ExecStart=/usr/local/bin/raiju fees
 ```
 
@@ -84,7 +84,7 @@ Example `fees.timer`:
 
 ```
 [Unit]
-Description=Set fees weekly
+Description=Set fees daily at 3am
 
 [Timer]
 OnCalendar=*-*-* 03:00:00
@@ -131,7 +131,7 @@ Group=lightning
 Environment=RAIJU_HOST=localhost:10009
 Environment=RAIJU_MAC_PATH=/home/lightning/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
 Environment=RAIJU_TLS_PATH=/home/lightning/.lnd/tls.cert
-Environment=RAIJU_HIGH_FEE_PPM=2000
+Environment=RAIJU_STANDARD_LIQUIDITY_FEE_PPM=200
 ExecStart=/usr/local/bin/raiju rebalance 1
 ```
 

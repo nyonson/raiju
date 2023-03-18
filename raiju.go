@@ -32,6 +32,33 @@ func New(l lightninger) Raiju {
 	}
 }
 
+// LiquidityFees for channels with high, standard, and low liquidity.
+type LiquidityFees struct {
+	standard float64
+}
+
+// High liquidity channel fee to encourage more payments.
+func (l LiquidityFees) High() lightning.FeePPM {
+	return lightning.FeePPM(l.standard / 10)
+}
+
+// Standard liquidity channel fee.
+func (l LiquidityFees) Standard() lightning.FeePPM {
+	return lightning.FeePPM(l.standard)
+}
+
+// Low liquidity channel fee to discourage payments.
+func (l LiquidityFees) Low() lightning.FeePPM {
+	return lightning.FeePPM(l.standard * 10)
+}
+
+// NewLiquidityFees based on the standard fee.
+func NewLiquidityFees(standard float64) LiquidityFees {
+	return LiquidityFees{
+		standard: standard,
+	}
+}
+
 // RelativeNode has information on a node's graph characteristics relative to other nodes.
 type RelativeNode struct {
 	lightning.Node
@@ -229,32 +256,26 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 }
 
 // Fees to encourage a balanced channel.
-//
-// Channels with high liquidity will have the highFee, standard liquidity will have highFee / 10, and low liquidity
-// will have highFee / 100.
-func (r Raiju) Fees(ctx context.Context, highFee lightning.FeePPM) error {
+func (r Raiju) Fees(ctx context.Context, fees LiquidityFees) error {
 	channels, err := r.l.ListChannels(ctx)
 	if err != nil {
 		return err
 	}
 
-	standardFee := highFee / 10
-	lowFee := standardFee / 10
-
 	for _, c := range channels {
 		switch c.Liquidity() {
 		case lightning.LowLiquidity:
 			liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
-			fmt.Fprintf(os.Stderr, "channel %d has low liquidity %f setting fee to %f\n", c.ChannelID, liquidity, lowFee)
-			r.l.SetFees(ctx, c.ChannelID, lowFee)
+			fmt.Fprintf(os.Stderr, "channel %d has low liquidity %f setting fee to %f\n", c.ChannelID, liquidity, fees.Low())
+			r.l.SetFees(ctx, c.ChannelID, fees.Low())
 		case lightning.StandardLiquidity:
 			liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
-			fmt.Fprintf(os.Stderr, "channel %d has standard liquidity %f setting fee to %f\n", c.ChannelID, liquidity, standardFee)
-			r.l.SetFees(ctx, c.ChannelID, standardFee)
+			fmt.Fprintf(os.Stderr, "channel %d has standard liquidity %f setting fee to %f\n", c.ChannelID, liquidity, fees.Standard())
+			r.l.SetFees(ctx, c.ChannelID, fees.Standard())
 		case lightning.HighLiquidity:
 			liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
-			fmt.Fprintf(os.Stderr, "channel %d has high liquidity %f setting fee to %f\n", c.ChannelID, liquidity, highFee)
-			r.l.SetFees(ctx, c.ChannelID, highFee)
+			fmt.Fprintf(os.Stderr, "channel %d has high liquidity %f setting fee to %f\n", c.ChannelID, liquidity, fees.High())
+			r.l.SetFees(ctx, c.ChannelID, fees.High())
 		}
 
 	}
@@ -262,7 +283,7 @@ func (r Raiju) Fees(ctx context.Context, highFee lightning.FeePPM) error {
 	return nil
 }
 
-// https://github.com/lightning/bolts/blob/master/04-onion-routing.md#non-strict-forwarding
+// Rebalance channel.
 func (r Raiju) Rebalance(ctx context.Context, outChannelID uint64, lastHopPubkey string, percent float64, max lightning.FeePPM) error {
 	// calculate invoice value
 	c, err := r.l.GetChannel(ctx, outChannelID)
@@ -294,6 +315,7 @@ func (r Raiju) Rebalance(ctx context.Context, outChannelID uint64, lastHopPubkey
 	return nil
 }
 
+// RebalanceAll channels.
 func (r Raiju) RebalanceAll(ctx context.Context, percent float64, max lightning.FeePPM) error {
 	local, err := r.l.GetInfo(ctx)
 	if err != nil {
