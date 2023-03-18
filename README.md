@@ -87,7 +87,7 @@ Example `fees.timer`:
 Description=Set fees weekly
 
 [Timer]
-OnCalendar=weekly
+OnCalendar=*-*-* 03:00:00
 
 [Install]
 WantedBy=timers.target
@@ -142,8 +142,8 @@ Example `rebalance.timer`:
 Description=Rebalance channels daily with a wiggle so not run at the same time every day
 
 [Timer]
-OnCalendar=daily
-RandomizedDelaySec=43200
+OnCalendar=*-*-* 00:00:00
+RandomizedDelaySec=1h
 
 [Install]
 WantedBy=timers.target
