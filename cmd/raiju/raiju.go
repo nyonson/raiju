@@ -33,10 +33,12 @@ func main() {
 	rootFlagSet.String("config", defaultConfigFile, "configuration file path")
 
 	// lnd flags
-	host := rootFlagSet.String("host", "localhost:10009", "lnd host and port")
-	tlsPath := rootFlagSet.String("tls-path", "", "lnd node tls certificate")
-	macPath := rootFlagSet.String("mac-path", "", "macaroon with necessary permissions for lnd node")
-	network := rootFlagSet.String("network", "mainnet", "lightning network")
+	host := rootFlagSet.String("host", "localhost:10009", "LND host with port")
+	tlsPath := rootFlagSet.String("tls-path", "", "LND node tls certificate")
+	macPath := rootFlagSet.String("mac-path", "", "Macaroon with necessary permissions for lnd node")
+	network := rootFlagSet.String("network", "mainnet", "The bitcoin network")
+	// liquidity flags
+	highFeePPM := rootFlagSet.Float64("high-fee-ppm", 2000, "Default high liquidity setting shared by commands")
 
 	candidatesFlagSet := flag.NewFlagSet("candidates", flag.ExitOnError)
 	minCapacity := candidatesFlagSet.Int64("min-capacity", 10000000, "Minimum capacity of a node")
@@ -100,7 +102,7 @@ func main() {
 	}
 
 	feesFlagSet := flag.NewFlagSet("fees", flag.ExitOnError)
-	standardFee := feesFlagSet.Float64("standard-fee", 200, "Standard fee rate in ppm for a balanced channel")
+	highFeePPMiOverride := feesFlagSet.Float64("high-fee-ppm", 0, "Override the default high fee ppm")
 
 	feesCmd := &ffcli.Command{
 		Name:       "fees",
@@ -128,7 +130,13 @@ func main() {
 			c := lightning.New(services.Client, services.Client, services.Router)
 			r := raiju.New(c)
 
-			r.Fees(ctx, lightning.FeePPM(*standardFee))
+			// default to high fee, override with flag
+			high := *highFeePPM
+			if *highFeePPMiOverride != 0 {
+				high = *highFeePPMiOverride
+			}
+
+			r.Fees(ctx, lightning.FeePPM(high))
 
 			return nil
 		},
@@ -137,16 +145,17 @@ func main() {
 	rebalanceFlagSet := flag.NewFlagSet("rebalance", flag.ExitOnError)
 	outChannelID := rebalanceFlagSet.Uint64("out-channel-id", 0, "Send out of channel ID")
 	lastHopPubkey := rebalanceFlagSet.String("last-hop-pubkey", "", "Receive from node")
+	maxFeePPM := rebalanceFlagSet.Float64("max-fee-ppm", 0, "Override the default high fee ppm")
 
 	rebalanceCmd := &ffcli.Command{
 		Name:       "rebalance",
-		ShortUsage: "raiju rebalance <percent> <max-fee-ppm>",
+		ShortUsage: "raiju rebalance <percent>",
 		ShortHelp:  "Send circular payment(s) to actively rebalance channels",
 		LongHelp:   "If the output and input flags are set, a rebalance is attempted (both must be set together). If not, channels are grouped into three coarse grained buckets: standard, high, and low. Standard channels will be ignored since their liquidity is good. High channels will attempt to push the percent of their capacity in liquidity at a time to the low channels, stopping if their liquidity improves enough or if all channels have been tried.",
 		FlagSet:    rebalanceFlagSet,
 		Exec: func(ctx context.Context, args []string) error {
-			if len(args) != 2 {
-				return errors.New("rebalance takes two args")
+			if len(args) != 1 {
+				return errors.New("rebalance takes one arg")
 			}
 
 			// must be set together
@@ -157,11 +166,6 @@ func main() {
 			percent, err := strconv.ParseFloat(args[0], 64)
 			if err != nil {
 				return fmt.Errorf("unable to parse arg: %s", args[0])
-			}
-
-			maxFeePPM, err := strconv.ParseFloat(args[1], 64)
-			if err != nil {
-				return fmt.Errorf("unable to parse arg: %s", args[1])
 			}
 
 			cfg := &lndclient.LndServicesConfig{
@@ -178,10 +182,16 @@ func main() {
 			c := lightning.New(services.Client, services.Client, services.Router)
 			r := raiju.New(c)
 
+			// default to high fee, override with flag
+			max := *highFeePPM
+			if *maxFeePPM != 0 {
+				max = *maxFeePPM
+			}
+
 			if *lastHopPubkey != "" {
-				err = r.Rebalance(ctx, *outChannelID, *lastHopPubkey, percent, lightning.FeePPM(maxFeePPM))
+				err = r.Rebalance(ctx, *outChannelID, *lastHopPubkey, percent, lightning.FeePPM(max))
 			} else {
-				err = r.RebalanceAll(ctx, percent, lightning.FeePPM(maxFeePPM))
+				err = r.RebalanceAll(ctx, percent, lightning.FeePPM(max))
 			}
 
 			return err

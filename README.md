@@ -54,10 +54,10 @@ Auto set channel fees based on the channel's current liquidity.
 
 The idea here is to encourage channel re-balancing through fees. If a channel has a too much local liquidity, fees are lowered in order to encourage relatively more outbound transactions. Visa versa for a channel with too little local liquidity.
 
-The strategy for fee amounts is hardcoded (although I might try to add some more in the future) to `standard-fee / 10`, `standard-fee`, or `standard-fee x 10`.
+The strategy for fee amounts is hardcoded (although I might try to add some more in the future) to `high-fee-ppm` for channels with high liquidity, `high-fee-ppm / 10` for standard liquidity, and `high-fee-ppm / 100` for low liquidity.
 
 ```
-$ raiju fees -standard-fee=200
+$ raiju fees -high-fee-ppm 2000
 ```
 
 ### systemd automation
@@ -76,6 +76,7 @@ Group=lightning
 Environment=RAIJU_HOST=localhost:10009
 Environment=RAIJU_MAC_PATH=/home/lightning/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
 Environment=RAIJU_TLS_PATH=/home/lightning/.lnd/tls.cert
+Environment=RAIJU_HIGH_FEE_PPM=2000
 ExecStart=/usr/local/bin/raiju fees
 ```
 
@@ -105,13 +106,13 @@ The command takes two arguments:
 If output channel and last hop node flags are specified, than just those channels will be rebalanced. The following example is pushing 1% of the channel `754031881261074944`'s capacity to the channel with the `03963169ddfcc5cc6afaff7764fa20dc2e21e9ed8ef0ff0ccd18137d62ae2e01f4` node. A max fee of `2000` ppm will be paid. 
 
 ```
-$ raiju rebalance -last-hop-pubkey 03963169ddfcc5cc6afaff7764fa20dc2e21e9ed8ef0ff0ccd18137d62ae2e01f4 -out-channel-id 754031881261074944 1 2000
+$ raiju rebalance -last-hop-pubkey 03963169ddfcc5cc6afaff7764fa20dc2e21e9ed8ef0ff0ccd18137d62ae2e01f4 -out-channel-id 754031881261074944 1
 ```
 
 If no out channel and last hop pubkey are given, the command will roll through all channels with high liquidity (as defined by raiju) and attempt to push it through channels of low liquidity (as defined by raiju). Be careful, there are not a lot of smarts built in to this command and it has the potential to over rebalance.
 
 ```
-$ raiju rebalance 1 2000 
+$ raiju rebalance 1 
 ```
 
 Why is the out channel a channel ID while the last hop (a.k.a. in channel) a pubkey? This is due to the lightning Network's protocol allowing for [non-strict forwarding](https://github.com/lightning/bolts/blob/master/04-onion-routing.md#non-strict-forwarding). There might be some ways to specify an in channel, but I haven't put too much thought into it yet. 
@@ -130,7 +131,8 @@ Group=lightning
 Environment=RAIJU_HOST=localhost:10009
 Environment=RAIJU_MAC_PATH=/home/lightning/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
 Environment=RAIJU_TLS_PATH=/home/lightning/.lnd/tls.cert
-ExecStart=/usr/local/bin/raiju rebalance 1 2000 
+Environment=RAIJU_HIGH_FEE_PPM=2000
+ExecStart=/usr/local/bin/raiju rebalance 1
 ```
 
 Example `rebalance.timer`:

@@ -229,31 +229,32 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 }
 
 // Fees to encourage a balanced channel.
-func (r Raiju) Fees(ctx context.Context, standardFee lightning.FeePPM) error {
+//
+// Channels with high liquidity will have the highFee, standard liquidity will have highFee / 10, and low liquidity
+// will have highFee / 100.
+func (r Raiju) Fees(ctx context.Context, highFee lightning.FeePPM) error {
 	channels, err := r.l.ListChannels(ctx)
 	if err != nil {
 		return err
 	}
 
-	// encourage relatively more inbound txs by raising local fees.
-	lowLiquidityFee := standardFee * 10
-	// encourage relatively more outbound txs by lowering local fees.
-	highLiquidityFee := standardFee / 10
+	standardFee := highFee / 10
+	lowFee := standardFee / 10
 
 	for _, c := range channels {
 		switch c.Liquidity() {
 		case lightning.LowLiquidity:
 			liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
-			fmt.Fprintf(os.Stderr, "channel %d has low liquidity %f setting fee to %f\n", c.ChannelID, liquidity, lowLiquidityFee)
-			r.l.SetFees(ctx, c.ChannelID, lowLiquidityFee)
+			fmt.Fprintf(os.Stderr, "channel %d has low liquidity %f setting fee to %f\n", c.ChannelID, liquidity, lowFee)
+			r.l.SetFees(ctx, c.ChannelID, lowFee)
 		case lightning.StandardLiquidity:
 			liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
 			fmt.Fprintf(os.Stderr, "channel %d has standard liquidity %f setting fee to %f\n", c.ChannelID, liquidity, standardFee)
 			r.l.SetFees(ctx, c.ChannelID, standardFee)
 		case lightning.HighLiquidity:
 			liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
-			fmt.Fprintf(os.Stderr, "channel %d has high liquidity %f setting fee to %f\n", c.ChannelID, liquidity, highLiquidityFee)
-			r.l.SetFees(ctx, c.ChannelID, highLiquidityFee)
+			fmt.Fprintf(os.Stderr, "channel %d has high liquidity %f setting fee to %f\n", c.ChannelID, liquidity, highFee)
+			r.l.SetFees(ctx, c.ChannelID, highFee)
 		}
 
 	}
