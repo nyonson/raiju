@@ -8,10 +8,11 @@
 ###    ### ###     ### ###########  #####       ########            
 ```
 - [overview](#overview)
-- [usage](#usage)
+- [commands](#commands)
   - [candidates](#candidates)
   - [fees](#fees)
   - [rebalance](#rebalance)
+  - [reaper](#reaper)
 - [installation](#installation)
 - [configuration](#configuration)
 - [node](#node)
