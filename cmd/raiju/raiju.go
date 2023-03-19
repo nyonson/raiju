@@ -136,11 +136,7 @@ func main() {
 				standard = *standardLiquidityFeePPMOverride
 			}
 
-			fees := raiju.NewLiquidityFees(standard)
-
-			r.Fees(ctx, fees)
-
-			return nil
+			return r.Fees(ctx, raiju.NewLiquidityFees(standard))
 		},
 	}
 
@@ -202,10 +198,42 @@ func main() {
 		},
 	}
 
+	reaperFlagSet := flag.NewFlagSet("reaper", flag.ExitOnError)
+
+	reaperCmd := &ffcli.Command{
+		Name:       "reaper",
+		ShortUsage: "raiju reaper",
+		ShortHelp:  "Find unproductive channels",
+		LongHelp:   "",
+		FlagSet:    reaperFlagSet,
+		Exec: func(ctx context.Context, args []string) error {
+			if len(args) != 0 {
+				return errors.New("reaper does not take any args")
+			}
+
+			cfg := &lndclient.LndServicesConfig{
+				LndAddress:         *host,
+				Network:            lndclient.Network(*network),
+				CustomMacaroonPath: *macPath,
+				TLSPath:            *tlsPath,
+			}
+			services, err := lndclient.NewLndServices(cfg)
+
+			if err != nil {
+				return err
+			}
+
+			c := lightning.New(services.Client, services.Client, services.Router)
+			r := raiju.New(c)
+
+			return r.Reaper(ctx)
+		},
+	}
+
 	root := &ffcli.Command{
 		ShortUsage:  "raiju [global flags] <subcommand> [subcommand flags] [subcommand args]",
 		FlagSet:     rootFlagSet,
-		Subcommands: []*ffcli.Command{candidatesCmd, feesCmd, rebalanceCmd},
+		Subcommands: []*ffcli.Command{candidatesCmd, feesCmd, rebalanceCmd, reaperCmd},
 		Options:     []ff.Option{ff.WithEnvVarPrefix("RAIJU"), ff.WithConfigFileFlag("config"), ff.WithConfigFileParser(ff.PlainParser), ff.WithAllowMissingConfigFile(true)},
 		Exec: func(context.Context, []string) error {
 			return flag.ErrHelp

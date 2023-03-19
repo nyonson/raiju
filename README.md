@@ -20,11 +20,13 @@
 
 Your friendly bitcoin lightning network helper.
 
-Raiju is a CLI app which sits on top of a lightning node. It supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation. Raiju calls out to the node for information and then performs analysis for insights and management.
+Raiju is a CLI app which sits on top of a lightning node. It currently only supports the [lnd](https://github.com/lightningnetwork/lnd) implementation. 
 
-# usage
+Raiju helps automate the channel life-cycle: creating, liquidity management, and closing. The `candidates` command helps open the most efficient new channels. The `fees` and `rebalance` commands automate passive and active liquidity management. And finally, the `reaper` command exposes inefficient channels to close in order to better allocate resources. 
 
-All of Raiju's subcommands can be listed with the global help flag.
+# commands 
+
+All of Raiju's commands can be listed with the global help flag.
 
 ```
 raiju -h
@@ -32,7 +34,7 @@ raiju -h
 
 ## candidates
 
-Lists nodes by distance descending.
+Find the best nodes to open a channel. `candidates` lists nodes by distance descending.
 
 Theoretically these are desirable nodes to open channels to because they are well connected, but far (a.k.a. fees) away from the current node. The `Distant Neighbors` metric is the number of channels that node has with distant nodes from the root node.
 
@@ -50,9 +52,9 @@ The `assume` flag allows you to see the remaining set of nodes assuming channels
 
 ## fees
 
-Auto set channel fees based on the channel's current liquidity.
+Set channel fees based on the channel's current liquidity.
 
-The idea here is to encourage channel re-balancing through fees. If a channel has a too much local liquidity, fees are lowered in order to encourage relatively more outbound transactions. Visa versa for a channel with too little local liquidity.
+The idea here is to encourage passive channel re-balancing through fees. If a channel has a too much local liquidity, fees are lowered in order to encourage relatively more outbound transactions. Visa versa for a channel with too little local liquidity.
 
 The strategy for fee amounts is hardcoded (although I might try to add some more in the future) based on the standard fee ppm flag. 
 
@@ -147,6 +149,17 @@ RandomizedDelaySec=1h
 
 [Install]
 WantedBy=timers.target
+```
+
+## reaper
+
+Find channels which should be closed and re-allocated.
+
+```
+$ raiju reaper
+Channel ID          Pubkey   Capacity (BTC)  
+859008852420919297  fewsats  0.1             
+826864630068281345  Pinky    0.02   
 ```
 
 # installation

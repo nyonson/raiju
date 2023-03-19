@@ -15,6 +15,7 @@ import (
 type lightninger interface {
 	AddInvoice(ctx context.Context, amount lightning.Satoshi) (string, error)
 	DescribeGraph(ctx context.Context) (*lightning.Graph, error)
+	ForwardingHistory(ctx context.Context, since time.Time) ([]lightning.Forward, error)
 	GetInfo(ctx context.Context) (*lightning.Info, error)
 	GetChannel(ctx context.Context, channelID uint64) (lightning.Channel, error)
 	ListChannels(ctx context.Context) (lightning.Channels, error)
@@ -265,15 +266,15 @@ func (r Raiju) Fees(ctx context.Context, fees LiquidityFees) error {
 	for _, c := range channels {
 		switch c.Liquidity() {
 		case lightning.LowLiquidity:
-			liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
+			liquidity := c.LocalBalance.ToUnit(btcutil.AmountSatoshi) / (c.LocalBalance.ToUnit(btcutil.AmountSatoshi) + c.RemoteBalance.ToUnit(btcutil.AmountSatoshi)) * 100
 			fmt.Fprintf(os.Stderr, "channel %d has low liquidity %f setting fee to %f\n", c.ChannelID, liquidity, fees.Low())
 			r.l.SetFees(ctx, c.ChannelID, fees.Low())
 		case lightning.StandardLiquidity:
-			liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
+			liquidity := c.LocalBalance.ToUnit(btcutil.AmountSatoshi) / (c.LocalBalance.ToUnit(btcutil.AmountSatoshi) + c.RemoteBalance.ToUnit(btcutil.AmountSatoshi)) * 100
 			fmt.Fprintf(os.Stderr, "channel %d has standard liquidity %f setting fee to %f\n", c.ChannelID, liquidity, fees.Standard())
 			r.l.SetFees(ctx, c.ChannelID, fees.Standard())
 		case lightning.HighLiquidity:
-			liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
+			liquidity := c.LocalBalance.ToUnit(btcutil.AmountSatoshi) / (c.LocalBalance.ToUnit(btcutil.AmountSatoshi) + c.RemoteBalance.ToUnit(btcutil.AmountSatoshi)) * 100
 			fmt.Fprintf(os.Stderr, "channel %d has high liquidity %f setting fee to %f\n", c.ChannelID, liquidity, fees.High())
 			r.l.SetFees(ctx, c.ChannelID, fees.High())
 		}
@@ -347,6 +348,42 @@ func (r Raiju) RebalanceAll(ctx context.Context, percent float64, max lightning.
 			}
 		}
 	}
+
+	return nil
+}
+
+// Reaper calculates inefficient channels which should be closed.
+func (r Raiju) Reaper(ctx context.Context) error {
+	// pull the last month of forwards
+	forwards, err := r.l.ForwardingHistory(ctx, time.Now().AddDate(0, -1, 0))
+	if err != nil {
+		return err
+	}
+
+	channels, err := r.l.ListChannels(ctx)
+	if err != nil {
+		return err
+	}
+
+	// initialize tracker
+	m := make(map[uint64]bool)
+	for _, c := range channels {
+		m[c.ChannelID] = false
+	}
+
+	for _, f := range forwards {
+		m[f.ChannelIn] = true
+		m[f.ChannelOut] = true
+	}
+
+	inefficient := make(lightning.Channels, 0)
+	for _, c := range channels {
+		if !m[c.ChannelID] {
+			inefficient = append(inefficient, c)
+		}
+	}
+
+	PrintChannels(inefficient)
 
 	return nil
 }

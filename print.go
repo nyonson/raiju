@@ -16,3 +16,16 @@ func PrintNodes(nodes []RelativeNode) error {
 
 	return nil
 }
+
+// PrintChannels in table formatted list.
+func PrintChannels(channels lightning.Channels) error {
+	tbl := table.New("Channel ID", "Pubkey", "Capacity (BTC)")
+
+	for _, c := range channels {
+		tbl.AddRow(c.ChannelID, c.RemoteNode.Alias, lightning.Satoshi(c.Capacity).BTC())
+	}
+
+	tbl.Print()
+
+	return nil
+}

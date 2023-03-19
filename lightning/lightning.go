@@ -4,6 +4,7 @@ package lightning
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -23,6 +24,7 @@ import (
 // Satoshi unit of bitcoin.
 type Satoshi int64
 
+// BTC value of Satoshi.
 func (s Satoshi) BTC() float64 {
 	return float64(s) / 100000000
 }
@@ -30,8 +32,15 @@ func (s Satoshi) BTC() float64 {
 // FeePPM is the channel fee in part per million.
 type FeePPM float64
 
+// Rate of fee.
 func (f FeePPM) Rate() float64 {
 	return float64(f) / 1000000
+}
+
+type Forward struct {
+	Timestamp  time.Time
+	ChannelIn  uint64
+	ChannelOut uint64
 }
 
 // Node in the Lightning Network.
@@ -83,9 +92,10 @@ const (
 // Detailed information of a payment channel between nodes.
 type Channel struct {
 	Edge
-	ChannelID uint64
-	Local     btcutil.Amount
-	Remote    btcutil.Amount
+	ChannelID     uint64
+	LocalBalance  btcutil.Amount
+	RemoteBalance btcutil.Amount
+	RemoteNode    Node
 }
 
 // Liquidity of the channel.
@@ -96,7 +106,7 @@ func (c Channel) Liquidity() ChannelLiquidity {
 	const LOW_LIQUIDITY = 20
 	const HIGH_LIQUIDITY = 80
 
-	liquidity := c.Local.ToUnit(btcutil.AmountSatoshi) / (c.Local.ToUnit(btcutil.AmountSatoshi) + c.Remote.ToUnit(btcutil.AmountSatoshi)) * 100
+	liquidity := c.LocalBalance.ToUnit(btcutil.AmountSatoshi) / (c.LocalBalance.ToUnit(btcutil.AmountSatoshi) + c.RemoteBalance.ToUnit(btcutil.AmountSatoshi)) * 100
 
 	if liquidity < LOW_LIQUIDITY {
 		return LowLiquidity
@@ -144,8 +154,12 @@ type Info struct {
 // channeler is the minimum channel requirements from LND.
 type channeler interface {
 	DescribeGraph(ctx context.Context, includeUnannounced bool) (*lndclient.Graph, error)
+	ForwardingHistory(ctx context.Context,
+		req lndclient.ForwardingHistoryRequest) (*lndclient.ForwardingHistoryResponse, error)
 	GetChanInfo(ctx context.Context, chanId uint64) (*lndclient.ChannelEdge, error)
 	GetInfo(ctx context.Context) (*lndclient.Info, error)
+	GetNodeInfo(ctx context.Context, pubkey route.Vertex,
+		includeChannels bool) (*lndclient.NodeInfo, error)
 	ListChannels(ctx context.Context, activeOnly, publicOnly bool) ([]lndclient.ChannelInfo, error)
 	UpdateChanPolicy(ctx context.Context, req lndclient.PolicyUpdateRequest, chanPoint *wire.OutPoint) error
 }
@@ -236,9 +250,30 @@ func (l Lightning) GetChannel(ctx context.Context, channelID uint64) (Channel, e
 		return Channel{}, err
 	}
 
+	local, err := l.c.GetInfo(ctx)
+	if err != nil {
+		return Channel{}, err
+	}
+
+	remotePubkey := ce.Node1
+	if local.IdentityPubkey == remotePubkey {
+		remotePubkey = ce.Node2
+	}
+
+	remote, err := l.c.GetNodeInfo(ctx, remotePubkey, false)
+	if err != nil {
+		return Channel{}, err
+	}
+
 	c := Channel{
 		Edge:      Edge{Capacity: ce.Capacity, Node1: ce.Node1.String(), Node2: ce.Node2.String()},
 		ChannelID: ce.ChannelID,
+		RemoteNode: Node{
+			PubKey:    remote.PubKey.String(),
+			Alias:     remote.Alias,
+			Updated:   remote.LastUpdate,
+			Addresses: remote.Addresses,
+		},
 	}
 
 	// get local and remote liquidity from the list channels call
@@ -249,10 +284,9 @@ func (l Lightning) GetChannel(ctx context.Context, channelID uint64) (Channel, e
 
 	for _, ci := range cs {
 		if ci.ChannelID == channelID {
-			c.Local = ci.LocalBalance
-			c.Remote = ci.RemoteBalance
+			c.LocalBalance = ci.LocalBalance
+			c.RemoteBalance = ci.RemoteBalance
 		}
-
 	}
 
 	return c, nil
@@ -261,7 +295,11 @@ func (l Lightning) GetChannel(ctx context.Context, channelID uint64) (Channel, e
 // ListChannels of local node.
 func (l Lightning) ListChannels(ctx context.Context) (Channels, error) {
 	channelInfos, err := l.c.ListChannels(ctx, true, true)
+	if err != nil {
+		return nil, err
+	}
 
+	local, err := l.c.GetInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -273,11 +311,27 @@ func (l Lightning) ListChannels(ctx context.Context) (Channels, error) {
 			return nil, err
 		}
 
+		remotePubkey := ce.Node1
+		if local.IdentityPubkey == remotePubkey {
+			remotePubkey = ce.Node2
+		}
+
+		remote, err := l.c.GetNodeInfo(ctx, remotePubkey, false)
+		if err != nil {
+			return nil, err
+		}
+
 		channels[i] = Channel{
-			Edge:      Edge{Capacity: ci.Capacity, Node1: ce.Node1.String(), Node2: ce.Node2.String()},
-			ChannelID: ci.ChannelID,
-			Local:     ci.LocalBalance,
-			Remote:    ci.RemoteBalance,
+			Edge:          Edge{Capacity: ci.Capacity, Node1: ce.Node1.String(), Node2: ce.Node2.String()},
+			ChannelID:     ci.ChannelID,
+			LocalBalance:  ci.LocalBalance,
+			RemoteBalance: ci.RemoteBalance,
+			RemoteNode: Node{
+				PubKey:    remote.PubKey.String(),
+				Alias:     remote.Alias,
+				Updated:   remote.LastUpdate,
+				Addresses: remote.Addresses,
+			},
 		}
 	}
 
@@ -344,6 +398,37 @@ func (l Lightning) SendPayment(ctx context.Context, invoice string, outChannelID
 			return 0, fmt.Errorf("error paying invoice: %w", e)
 		}
 	}
+}
+
+// ForwardingHistory of node since the time give, capped at 50,000 events.
+func (l Lightning) ForwardingHistory(ctx context.Context, since time.Time) ([]Forward, error) {
+	maxEvents := 50000
+	req := lndclient.ForwardingHistoryRequest{
+		StartTime: since,
+		EndTime:   time.Now(),
+		MaxEvents: uint32(maxEvents),
+	}
+	res, err := l.c.ForwardingHistory(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	// maybe reconsider better failure method
+	if len(res.Events) == maxEvents {
+		return nil, errors.New("pulled too many events, lower time window")
+	}
+
+	forwards := make([]Forward, 0)
+	for _, f := range res.Events {
+		forward := Forward{
+			Timestamp:  f.Timestamp,
+			ChannelIn:  f.ChannelIn,
+			ChannelOut: f.ChannelOut,
+		}
+		forwards = append(forwards, forward)
+	}
+
+	return forwards, nil
 }
 
 func decodeChannelPoint(cp string) (*wire.OutPoint, error) {
