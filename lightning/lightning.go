@@ -74,7 +74,7 @@ func (n Node) Clearnet() bool {
 
 // Edge between nodes in the Lightning Network.
 type Edge struct {
-	Capacity btcutil.Amount
+	Capacity Satoshi
 	Node1    string
 	Node2    string
 }
@@ -85,38 +85,41 @@ type Graph struct {
 	Edges []Edge
 }
 
-// ChannelLiquidity coarse-grained buckets.
-type ChannelLiquidity string
+// ChannelLiquidityLevel coarse-grained bucket based on current liquidity.
+type ChannelLiquidityLevel string
 
-// ChannelLiquidities
+// ChannelLiquidityLevels
 const (
-	LowLiquidity      ChannelLiquidity = "low"
-	StandardLiquidity ChannelLiquidity = "standard"
-	HighLiquidity     ChannelLiquidity = "high"
+	LowLiquidity      ChannelLiquidityLevel = "low"
+	StandardLiquidity ChannelLiquidityLevel = "standard"
+	HighLiquidity     ChannelLiquidityLevel = "high"
 )
 
 // Detailed information of a payment channel between nodes.
 type Channel struct {
 	Edge
 	ChannelID     ChannelID
-	LocalBalance  btcutil.Amount
-	RemoteBalance btcutil.Amount
+	LocalBalance  Satoshi
+	RemoteBalance Satoshi
 	RemoteNode    Node
 }
 
 // Liquidity of the channel.
-func (c Channel) Liquidity() ChannelLiquidity {
+func (c Channel) Liquidity() float64 {
+	return float64(c.LocalBalance) / float64(c.Capacity) * 100
+}
+
+// LiquidityLevel of the channel.
+func (c Channel) LiquidityLevel() ChannelLiquidityLevel {
 	// Defining channel liquidity percentage based on (local capacity / total capacity).
 	// When liquidity is low, there is too much inbound.
 	// When liquidity is high, there is too much outbound.
 	const LOW_LIQUIDITY = 20
 	const HIGH_LIQUIDITY = 80
 
-	liquidity := c.LocalBalance.ToUnit(btcutil.AmountSatoshi) / (c.LocalBalance.ToUnit(btcutil.AmountSatoshi) + c.RemoteBalance.ToUnit(btcutil.AmountSatoshi)) * 100
-
-	if liquidity < LOW_LIQUIDITY {
+	if c.Liquidity() < LOW_LIQUIDITY {
 		return LowLiquidity
-	} else if liquidity > HIGH_LIQUIDITY {
+	} else if c.Liquidity() > HIGH_LIQUIDITY {
 		return HighLiquidity
 	}
 
@@ -131,7 +134,7 @@ func (cs Channels) LowLiquidity() Channels {
 	ll := make(Channels, 0)
 
 	for _, c := range cs {
-		if c.Liquidity() == LowLiquidity {
+		if c.LiquidityLevel() == LowLiquidity {
 			ll = append(ll, c)
 		}
 	}
@@ -144,7 +147,7 @@ func (cs Channels) HighLiquidity() Channels {
 	hl := make(Channels, 0)
 
 	for _, c := range cs {
-		if c.Liquidity() == HighLiquidity {
+		if c.LiquidityLevel() == HighLiquidity {
 			hl = append(hl, c)
 		}
 	}
@@ -234,7 +237,7 @@ func (l Lightning) DescribeGraph(ctx context.Context) (*Graph, error) {
 	edges := make([]Edge, len(g.Edges))
 	for i, e := range g.Edges {
 		edges[i] = Edge{
-			Capacity: e.Capacity,
+			Capacity: Satoshi(e.Capacity.ToUnit(btcutil.AmountSatoshi)),
 			Node1:    e.Node1.String(),
 			Node2:    e.Node2.String(),
 		}
@@ -272,7 +275,11 @@ func (l Lightning) GetChannel(ctx context.Context, channelID ChannelID) (Channel
 	}
 
 	c := Channel{
-		Edge:      Edge{Capacity: ce.Capacity, Node1: ce.Node1.String(), Node2: ce.Node2.String()},
+		Edge: Edge{
+			Capacity: Satoshi(ce.Capacity.ToUnit(btcutil.AmountSatoshi)),
+			Node1:    ce.Node1.String(),
+			Node2:    ce.Node2.String(),
+		},
 		ChannelID: ChannelID(ce.ChannelID),
 		RemoteNode: Node{
 			PubKey:    remote.PubKey.String(),
@@ -290,8 +297,8 @@ func (l Lightning) GetChannel(ctx context.Context, channelID ChannelID) (Channel
 
 	for _, ci := range cs {
 		if ChannelID(ci.ChannelID) == channelID {
-			c.LocalBalance = ci.LocalBalance
-			c.RemoteBalance = ci.RemoteBalance
+			c.LocalBalance = Satoshi(ci.LocalBalance.ToUnit(btcutil.AmountSatoshi))
+			c.RemoteBalance = Satoshi(ci.RemoteBalance.ToUnit(btcutil.AmountSatoshi))
 		}
 	}
 
@@ -328,10 +335,14 @@ func (l Lightning) ListChannels(ctx context.Context) (Channels, error) {
 		}
 
 		channels[i] = Channel{
-			Edge:          Edge{Capacity: ci.Capacity, Node1: ce.Node1.String(), Node2: ce.Node2.String()},
+			Edge: Edge{
+				Capacity: Satoshi(ce.Capacity.ToUnit(btcutil.AmountSatoshi)),
+				Node1:    ce.Node1.String(),
+				Node2:    ce.Node2.String(),
+			},
 			ChannelID:     ChannelID(ci.ChannelID),
-			LocalBalance:  ci.LocalBalance,
-			RemoteBalance: ci.RemoteBalance,
+			LocalBalance:  Satoshi(ci.LocalBalance.ToUnit(btcutil.AmountSatoshi)),
+			RemoteBalance: Satoshi(ci.RemoteBalance.ToUnit(btcutil.AmountSatoshi)),
 			RemoteNode: Node{
 				PubKey:    remote.PubKey.String(),
 				Alias:     remote.Alias,

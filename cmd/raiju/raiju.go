@@ -149,7 +149,7 @@ func main() {
 		Name:       "rebalance",
 		ShortUsage: "raiju rebalance <percent>",
 		ShortHelp:  "Send circular payment(s) to actively rebalance channels",
-		LongHelp:   "If the output and input flags are set, a rebalance is attempted (both must be set together). If not, channels are grouped into three coarse grained buckets: standard, high, and low. Standard channels will be ignored since their liquidity is good. High channels will attempt to push the percent of their capacity in liquidity at a time to the low channels, stopping if their liquidity improves enough or if all channels have been tried.",
+		LongHelp:   "If the output and input flags are set, a rebalance is attempted (both must be set together). If not, channels are grouped into three coarse grained buckets: standard, high, and low. Standard channels will be ignored since their liquidity is good. High channels will attempt to push the percent of their capacity at a time to the low channels, stopping if their liquidity improves enough or if all channels have been tried.",
 		FlagSet:    rebalanceFlagSet,
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) != 1 {

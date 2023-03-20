@@ -8,7 +8,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/btcsuite/btcd/btcutil"
 	"github.com/nyonson/raiju/lightning"
 )
 
@@ -264,18 +263,15 @@ func (r Raiju) Fees(ctx context.Context, fees LiquidityFees) error {
 	}
 
 	for _, c := range channels {
-		switch c.Liquidity() {
+		switch c.LiquidityLevel() {
 		case lightning.LowLiquidity:
-			liquidity := c.LocalBalance.ToUnit(btcutil.AmountSatoshi) / (c.LocalBalance.ToUnit(btcutil.AmountSatoshi) + c.RemoteBalance.ToUnit(btcutil.AmountSatoshi)) * 100
-			fmt.Fprintf(os.Stderr, "channel %d has low liquidity %f setting fee to %f\n", c.ChannelID, liquidity, fees.Low())
+			fmt.Fprintf(os.Stderr, "channel %d has low liquidity %f setting fee to %f\n", c.ChannelID, c.Liquidity(), fees.Low())
 			r.l.SetFees(ctx, c.ChannelID, fees.Low())
 		case lightning.StandardLiquidity:
-			liquidity := c.LocalBalance.ToUnit(btcutil.AmountSatoshi) / (c.LocalBalance.ToUnit(btcutil.AmountSatoshi) + c.RemoteBalance.ToUnit(btcutil.AmountSatoshi)) * 100
-			fmt.Fprintf(os.Stderr, "channel %d has standard liquidity %f setting fee to %f\n", c.ChannelID, liquidity, fees.Standard())
+			fmt.Fprintf(os.Stderr, "channel %d has standard liquidity %f setting fee to %f\n", c.ChannelID, c.Liquidity(), fees.Standard())
 			r.l.SetFees(ctx, c.ChannelID, fees.Standard())
 		case lightning.HighLiquidity:
-			liquidity := c.LocalBalance.ToUnit(btcutil.AmountSatoshi) / (c.LocalBalance.ToUnit(btcutil.AmountSatoshi) + c.RemoteBalance.ToUnit(btcutil.AmountSatoshi)) * 100
-			fmt.Fprintf(os.Stderr, "channel %d has high liquidity %f setting fee to %f\n", c.ChannelID, liquidity, fees.High())
+			fmt.Fprintf(os.Stderr, "channel %d has high liquidity %f setting fee to %f\n", c.ChannelID, c.Liquidity(), fees.High())
 			r.l.SetFees(ctx, c.ChannelID, fees.High())
 		}
 
@@ -292,7 +288,7 @@ func (r Raiju) Rebalance(ctx context.Context, outChannelID lightning.ChannelID, 
 		return err
 	}
 
-	amount := int64(c.Capacity.ToUnit(btcutil.AmountSatoshi) * (percent / 100))
+	amount := int64(float64(c.Capacity) * percent / 100)
 	// add 0.5 so rounds up to at least 1
 	maxFee := int64(math.Round(max.Rate()*float64(amount) + 0.5))
 
@@ -342,7 +338,7 @@ func (r Raiju) RebalanceAll(ctx context.Context, percent float64, max lightning.
 			if err != nil {
 				return err
 			}
-			if ul.Liquidity() == lightning.LowLiquidity {
+			if ul.LiquidityLevel() == lightning.LowLiquidity {
 				// don't really care if error or not, just continue on
 				r.Rebalance(ctx, h.ChannelID, lastHopPubkey, percent, max)
 			}
