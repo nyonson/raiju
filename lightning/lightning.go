@@ -32,6 +32,12 @@ func (s Satoshi) BTC() float64 {
 // FeePPM is the channel fee in part per million.
 type FeePPM float64
 
+// Invoice for lightning payment.
+type Invoice string
+
+// ChannelID for channel.
+type ChannelID uint64
+
 // Rate of fee.
 func (f FeePPM) Rate() float64 {
 	return float64(f) / 1000000
@@ -39,8 +45,8 @@ func (f FeePPM) Rate() float64 {
 
 type Forward struct {
 	Timestamp  time.Time
-	ChannelIn  uint64
-	ChannelOut uint64
+	ChannelIn  ChannelID
+	ChannelOut ChannelID
 }
 
 // Node in the Lightning Network.
@@ -92,7 +98,7 @@ const (
 // Detailed information of a payment channel between nodes.
 type Channel struct {
 	Edge
-	ChannelID     uint64
+	ChannelID     ChannelID
 	LocalBalance  btcutil.Amount
 	RemoteBalance btcutil.Amount
 	RemoteNode    Node
@@ -243,9 +249,9 @@ func (l Lightning) DescribeGraph(ctx context.Context) (*Graph, error) {
 }
 
 // GetChannel with ID.
-func (l Lightning) GetChannel(ctx context.Context, channelID uint64) (Channel, error) {
+func (l Lightning) GetChannel(ctx context.Context, channelID ChannelID) (Channel, error) {
 	// returns a channel edge which doesn't have liquidity info
-	ce, err := l.c.GetChanInfo(ctx, channelID)
+	ce, err := l.c.GetChanInfo(ctx, uint64(channelID))
 	if err != nil {
 		return Channel{}, err
 	}
@@ -267,7 +273,7 @@ func (l Lightning) GetChannel(ctx context.Context, channelID uint64) (Channel, e
 
 	c := Channel{
 		Edge:      Edge{Capacity: ce.Capacity, Node1: ce.Node1.String(), Node2: ce.Node2.String()},
-		ChannelID: ce.ChannelID,
+		ChannelID: ChannelID(ce.ChannelID),
 		RemoteNode: Node{
 			PubKey:    remote.PubKey.String(),
 			Alias:     remote.Alias,
@@ -283,7 +289,7 @@ func (l Lightning) GetChannel(ctx context.Context, channelID uint64) (Channel, e
 	}
 
 	for _, ci := range cs {
-		if ci.ChannelID == channelID {
+		if ChannelID(ci.ChannelID) == channelID {
 			c.LocalBalance = ci.LocalBalance
 			c.RemoteBalance = ci.RemoteBalance
 		}
@@ -323,7 +329,7 @@ func (l Lightning) ListChannels(ctx context.Context) (Channels, error) {
 
 		channels[i] = Channel{
 			Edge:          Edge{Capacity: ci.Capacity, Node1: ce.Node1.String(), Node2: ce.Node2.String()},
-			ChannelID:     ci.ChannelID,
+			ChannelID:     ChannelID(ci.ChannelID),
 			LocalBalance:  ci.LocalBalance,
 			RemoteBalance: ci.RemoteBalance,
 			RemoteNode: Node{
@@ -339,8 +345,8 @@ func (l Lightning) ListChannels(ctx context.Context) (Channels, error) {
 }
 
 // SetFees for channel with rate in ppm.
-func (l Lightning) SetFees(ctx context.Context, channelID uint64, fee FeePPM) error {
-	ce, err := l.c.GetChanInfo(ctx, channelID)
+func (l Lightning) SetFees(ctx context.Context, channelID ChannelID, fee FeePPM) error {
+	ce, err := l.c.GetChanInfo(ctx, uint64(channelID))
 	if err != nil {
 		return err
 	}
@@ -360,25 +366,25 @@ func (l Lightning) SetFees(ctx context.Context, channelID uint64, fee FeePPM) er
 }
 
 // AddInvoice of amount.
-func (l Lightning) AddInvoice(ctx context.Context, amount Satoshi) (string, error) {
+func (l Lightning) AddInvoice(ctx context.Context, amount Satoshi) (Invoice, error) {
 	in := &invoicesrpc.AddInvoiceData{
 		Value: lnwire.NewMSatFromSatoshis(btcutil.Amount(amount)),
 	}
 	_, invoice, err := l.i.AddInvoice(ctx, in)
-	return invoice, err
+	return Invoice(invoice), err
 }
 
 // SendPayment to pay for invoice.
-func (l Lightning) SendPayment(ctx context.Context, invoice string, outChannelID uint64, lastHopPubkey string, maxFee Satoshi) (Satoshi, error) {
+func (l Lightning) SendPayment(ctx context.Context, invoice Invoice, outChannelID ChannelID, lastHopPubkey string, maxFee Satoshi) (Satoshi, error) {
 	lhpk, err := route.NewVertexFromStr(lastHopPubkey)
 	if err != nil {
 		return 0, err
 	}
 
 	request := lndclient.SendPaymentRequest{
-		Invoice:          invoice,
+		Invoice:          string(invoice),
 		MaxFee:           btcutil.Amount(maxFee),
-		OutgoingChanIds:  []uint64{outChannelID},
+		OutgoingChanIds:  []uint64{uint64(outChannelID)},
 		LastHopPubkey:    &lhpk,
 		AllowSelfPayment: true,
 		Timeout:          time.Duration(60) * time.Second,
@@ -422,8 +428,8 @@ func (l Lightning) ForwardingHistory(ctx context.Context, since time.Time) ([]Fo
 	for _, f := range res.Events {
 		forward := Forward{
 			Timestamp:  f.Timestamp,
-			ChannelIn:  f.ChannelIn,
-			ChannelOut: f.ChannelOut,
+			ChannelIn:  ChannelID(f.ChannelIn),
+			ChannelOut: ChannelID(f.ChannelOut),
 		}
 		forwards = append(forwards, forward)
 	}

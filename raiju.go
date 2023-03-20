@@ -13,14 +13,14 @@ import (
 )
 
 type lightninger interface {
-	AddInvoice(ctx context.Context, amount lightning.Satoshi) (string, error)
+	AddInvoice(ctx context.Context, amount lightning.Satoshi) (lightning.Invoice, error)
 	DescribeGraph(ctx context.Context) (*lightning.Graph, error)
 	ForwardingHistory(ctx context.Context, since time.Time) ([]lightning.Forward, error)
 	GetInfo(ctx context.Context) (*lightning.Info, error)
-	GetChannel(ctx context.Context, channelID uint64) (lightning.Channel, error)
+	GetChannel(ctx context.Context, channelID lightning.ChannelID) (lightning.Channel, error)
 	ListChannels(ctx context.Context) (lightning.Channels, error)
-	SendPayment(ctx context.Context, invoice string, outChannelID uint64, lastHopPubkey string, maxFee lightning.Satoshi) (lightning.Satoshi, error)
-	SetFees(ctx context.Context, channelID uint64, fee lightning.FeePPM) error
+	SendPayment(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubkey string, maxFee lightning.Satoshi) (lightning.Satoshi, error)
+	SetFees(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error
 }
 
 type Raiju struct {
@@ -285,7 +285,7 @@ func (r Raiju) Fees(ctx context.Context, fees LiquidityFees) error {
 }
 
 // Rebalance channel.
-func (r Raiju) Rebalance(ctx context.Context, outChannelID uint64, lastHopPubkey string, percent float64, max lightning.FeePPM) error {
+func (r Raiju) Rebalance(ctx context.Context, outChannelID lightning.ChannelID, lastHopPubkey string, percent float64, max lightning.FeePPM) error {
 	// calculate invoice value
 	c, err := r.l.GetChannel(ctx, outChannelID)
 	if err != nil {
@@ -366,7 +366,7 @@ func (r Raiju) Reaper(ctx context.Context) error {
 	}
 
 	// initialize tracker
-	m := make(map[uint64]bool)
+	m := make(map[lightning.ChannelID]bool)
 	for _, c := range channels {
 		m[c.ChannelID] = false
 	}

@@ -19,18 +19,22 @@ type fakeLightninger struct {
 	getInfo       func(ctx context.Context) (*lightning.Info, error)
 	describeGraph func(ctx context.Context) (*lightning.Graph, error)
 	listChannels  func(ctx context.Context) (lightning.Channels, error)
-	setFees       func(ctx context.Context, channelID uint64, fee lightning.FeePPM) error
+	setFees       func(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error
 }
 
-func (f fakeLightninger) AddInvoice(ctx context.Context, amount lightning.Satoshi) (string, error) {
+func (f fakeLightninger) AddInvoice(ctx context.Context, amount lightning.Satoshi) (lightning.Invoice, error) {
 	return "", nil
 }
 
-func (f fakeLightninger) SendPayment(ctx context.Context, invoice string, outChannelID uint64, lastHopPubkey string, maxFee lightning.Satoshi) (lightning.Satoshi, error) {
+func (f fakeLightninger) ForwardingHistory(ctx context.Context, since time.Time) ([]lightning.Forward, error) {
+	return []lightning.Forward{}, nil
+}
+
+func (f fakeLightninger) SendPayment(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubkey string, maxFee lightning.Satoshi) (lightning.Satoshi, error) {
 	return 0, nil
 }
 
-func (f fakeLightninger) GetChannel(ctx context.Context, channelID uint64) (lightning.Channel, error) {
+func (f fakeLightninger) GetChannel(ctx context.Context, channelID lightning.ChannelID) (lightning.Channel, error) {
 	return lightning.Channel{}, nil
 }
 
@@ -68,7 +72,7 @@ func (f fakeLightninger) ListChannels(ctx context.Context) (lightning.Channels, 
 	return nil, nil
 }
 
-func (f fakeLightninger) SetFees(ctx context.Context, channelID uint64, fee lightning.FeePPM) error {
+func (f fakeLightninger) SetFees(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error {
 	if f.setFees != nil {
 		return f.setFees(ctx, channelID, fee)
 	}

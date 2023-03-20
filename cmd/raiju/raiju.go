@@ -189,7 +189,7 @@ func main() {
 			}
 
 			if *lastHopPubkey != "" {
-				err = r.Rebalance(ctx, *outChannelID, *lastHopPubkey, percent, max)
+				err = r.Rebalance(ctx, lightning.ChannelID(*outChannelID), *lastHopPubkey, percent, max)
 			} else {
 				err = r.RebalanceAll(ctx, percent, max)
 			}
