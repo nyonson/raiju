@@ -139,7 +139,7 @@ Environment=RAIJU_HOST=localhost:10009
 Environment=RAIJU_MAC_PATH=/home/lightning/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
 Environment=RAIJU_TLS_PATH=/home/lightning/.lnd/tls.cert
 Environment=RAIJU_STANDARD_LIQUIDITY_FEE_PPM=200
-ExecStart=/usr/local/bin/raiju rebalance 1
+ExecStart=/usr/local/bin/raiju rebalance 1 5
 ```
 
 Example `rebalance.timer`:
