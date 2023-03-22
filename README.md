@@ -7,7 +7,13 @@
  #+#    #+# #+#     #+#     #+#     #+# #+#     #+#    #+#      
 ###    ### ###     ### ###########  #####       ########            
 ```
-- [overview](#overview)
+
+**Your friendly bitcoin lightning network helper.**
+
+Raiju is a CLI app which sits on top of a lightning node. It currently only supports the [lnd](https://github.com/lightningnetwork/lnd) implementation. 
+
+Raiju helps automate the channel life-cycle: creating, liquidity management, and closing. The `candidates` command helps open the most efficient new channels. The `fees` and `rebalance` commands automate passive and active liquidity management. And finally, the `reaper` command exposes inefficient channels to close in order to better allocate resources.
+
 - [commands](#commands)
   - [candidates](#candidates)
   - [fees](#fees)
@@ -16,14 +22,6 @@
 - [installation](#installation)
 - [configuration](#configuration)
 - [node](#node)
-
-# overview
-
-Your friendly bitcoin lightning network helper.
-
-Raiju is a CLI app which sits on top of a lightning node. It currently only supports the [lnd](https://github.com/lightningnetwork/lnd) implementation. 
-
-Raiju helps automate the channel life-cycle: creating, liquidity management, and closing. The `candidates` command helps open the most efficient new channels. The `fees` and `rebalance` commands automate passive and active liquidity management. And finally, the `reaper` command exposes inefficient channels to close in order to better allocate resources. 
 
 # commands 
 
@@ -172,16 +170,14 @@ Channel ID          Pubkey   Capacity (BTC)
 Raiju requires `go` on the system to be compiled. `go install` creates a `raiju` executable.
 
 ```
-$ git clone https://git.sr.ht/~yonson/raiju
-$ cd raiju
-$ go install cmd/raiju/raiju.go
+$ go install github.com/nyonson/raiju/cmd/raiju@latest
 ```
 
 # configuration
 
 All flags can be found with the help flag `-h`.
 
-*Global* flags (not subcommand flags) can be set on the CLI, through environment variables, or with a configuration file. Flags overwrite environment variables which overwrite the configuration file values.
+*Global* flags,not subcommand flags, can also be set through environment variables or with a configuration file. CLI flags overwrite environment variables which overwrite the configuration file values.
 
 Environment variables have a `RAIJU_` prefix on the flag name. For example, the global flag `host` can be set with the `RAIJU_HOST` environment variable.
 
