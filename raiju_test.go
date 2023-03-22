@@ -515,7 +515,20 @@ func TestRaiju_Fees(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "happy fees",
+			fields: fields{
+				l: &lightningerMock{
+					SetFeesFunc: func(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error {
+						return nil
+					},
+				},
+			},
+			args: args{
+				fees: LiquidityFees{},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -543,7 +556,88 @@ func TestRaiju_Reaper(t *testing.T) {
 		want    lightning.Channels
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "detect no recent forwards",
+			fields: fields{
+				l: &lightningerMock{
+					ForwardingHistoryFunc: func(ctx context.Context, since time.Time) ([]lightning.Forward, error) {
+						return []lightning.Forward{}, nil
+					},
+					ListChannelsFunc: func(ctx context.Context) (lightning.Channels, error) {
+						return lightning.Channels{{
+							Edge: lightning.Edge{
+								Capacity: 0,
+								Node1:    "",
+								Node2:    "",
+							},
+							ChannelID:     0,
+							LocalBalance:  0,
+							RemoteBalance: 0,
+							RemoteNode: lightning.Node{
+								PubKey:    pubkey,
+								Alias:     alias,
+								Updated:   updated,
+								Addresses: []string{},
+							},
+						}}, nil
+					},
+				},
+			},
+			args: args{},
+			want: []lightning.Channel{{
+				Edge: lightning.Edge{
+					Capacity: 0,
+					Node1:    "",
+					Node2:    "",
+				},
+				ChannelID:     0,
+				LocalBalance:  0,
+				RemoteBalance: 0,
+				RemoteNode: lightning.Node{
+					PubKey:    pubkey,
+					Alias:     alias,
+					Updated:   updated,
+					Addresses: []string{},
+				},
+			},
+			},
+			wantErr: false,
+		},
+		{
+			name: "detect recent forwards",
+			fields: fields{
+				l: &lightningerMock{
+					ForwardingHistoryFunc: func(ctx context.Context, since time.Time) ([]lightning.Forward, error) {
+						return []lightning.Forward{{
+							Timestamp:  time.Time{},
+							ChannelIn:  0,
+							ChannelOut: 1,
+						}}, nil
+					},
+					ListChannelsFunc: func(ctx context.Context) (lightning.Channels, error) {
+						return lightning.Channels{{
+							Edge: lightning.Edge{
+								Capacity: 0,
+								Node1:    "",
+								Node2:    "",
+							},
+							ChannelID:     0,
+							LocalBalance:  0,
+							RemoteBalance: 0,
+							RemoteNode: lightning.Node{
+								PubKey:    pubkey,
+								Alias:     alias,
+								Updated:   updated,
+								Addresses: []string{},
+							},
+						}}, nil
+					},
+				},
+			},
+			args:    args{},
+			want:    []lightning.Channel{},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -581,7 +675,37 @@ func TestRaiju_Rebalance(t *testing.T) {
 		want    float64
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "rebalance to max percent",
+			fields: fields{
+				l: &lightningerMock{
+					AddInvoiceFunc: func(ctx context.Context, amount lightning.Satoshi) (lightning.Invoice, error) {
+						return lightning.Invoice(""), nil
+					},
+					GetChannelFunc: func(ctx context.Context, channelID lightning.ChannelID) (lightning.Channel, error) {
+						return lightning.Channel{
+							Edge:          lightning.Edge{},
+							ChannelID:     0,
+							LocalBalance:  0,
+							RemoteBalance: 0,
+							RemoteNode:    lightning.Node{},
+						}, nil
+					},
+					SendPaymentFunc: func(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubkey string, maxFee lightning.Satoshi) (lightning.Satoshi, error) {
+						return 0, nil
+					},
+				},
+			},
+			args: args{
+				outChannelID:  0,
+				lastHopPubkey: pubkey,
+				stepPercent:   1,
+				maxPercent:    5,
+				maxFee:        10,
+			},
+			want:    5,
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -616,7 +740,42 @@ func TestRaiju_RebalanceAll(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "happy rebalance all",
+			fields: fields{
+				l: &lightningerMock{
+					AddInvoiceFunc: func(ctx context.Context, amount lightning.Satoshi) (lightning.Invoice, error) {
+						return lightning.Invoice(""), nil
+					},
+					GetChannelFunc: func(ctx context.Context, channelID lightning.ChannelID) (lightning.Channel, error) {
+						return lightning.Channel{
+							Edge:          lightning.Edge{},
+							ChannelID:     0,
+							LocalBalance:  0,
+							RemoteBalance: 0,
+							RemoteNode:    lightning.Node{},
+						}, nil
+					},
+					GetInfoFunc: func(ctx context.Context) (*lightning.Info, error) {
+						return &lightning.Info{
+							Pubkey: pubkey,
+						}, nil
+					},
+					ListChannelsFunc: func(ctx context.Context) (lightning.Channels, error) {
+						return lightning.Channels{}, nil
+					},
+					SendPaymentFunc: func(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubkey string, maxFee lightning.Satoshi) (lightning.Satoshi, error) {
+						return 0, nil
+					},
+				},
+			},
+			args: args{
+				stepPercent: 1,
+				maxPercent:  5,
+				maxFee:      10,
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
