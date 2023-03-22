@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"sort"
 	"time"
@@ -343,10 +344,21 @@ func (r Raiju) RebalanceAll(ctx context.Context, stepPercent float64, maxPercent
 		return err
 	}
 
+	hlcs := channels.HighLiquidity()
+	llcs := channels.LowLiquidity()
+
+	// Shuffle arrays so different combos are tried
+	rand.Shuffle(len(hlcs), func(i, j int) {
+		hlcs[i], hlcs[j] = hlcs[j], hlcs[i]
+	})
+	rand.Shuffle(len(llcs), func(i, j int) {
+		llcs[i], llcs[j] = llcs[j], llcs[i]
+	})
+
 	// Roll through high liquidity channels and try to push things through the low liquidity ones.
-	for _, h := range channels.HighLiquidity() {
+	for _, h := range hlcs {
 		percentRebalanced := float64(0)
-		for _, l := range channels.LowLiquidity() {
+		for _, l := range llcs {
 			// get the non-local node of the channel
 			lastHopPubkey := l.Node1
 			if lastHopPubkey == local.Pubkey {
