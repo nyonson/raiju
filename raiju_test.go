@@ -4,7 +4,6 @@ import (
 	"context"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/nyonson/raiju/lightning"
 )
@@ -14,71 +13,6 @@ const (
 	rootAlias   = "raiju"
 	rootUpdated = "2020-01-02T15:04:05Z"
 )
-
-type fakeLightninger struct {
-	getInfo       func(ctx context.Context) (*lightning.Info, error)
-	describeGraph func(ctx context.Context) (*lightning.Graph, error)
-	listChannels  func(ctx context.Context) (lightning.Channels, error)
-	setFees       func(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error
-}
-
-func (f fakeLightninger) AddInvoice(ctx context.Context, amount lightning.Satoshi) (lightning.Invoice, error) {
-	return "", nil
-}
-
-func (f fakeLightninger) ForwardingHistory(ctx context.Context, since time.Time) ([]lightning.Forward, error) {
-	return []lightning.Forward{}, nil
-}
-
-func (f fakeLightninger) SendPayment(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubkey string, maxFee lightning.Satoshi) (lightning.Satoshi, error) {
-	return 0, nil
-}
-
-func (f fakeLightninger) GetChannel(ctx context.Context, channelID lightning.ChannelID) (lightning.Channel, error) {
-	return lightning.Channel{}, nil
-}
-
-func (f fakeLightninger) GetInfo(ctx context.Context) (*lightning.Info, error) {
-	if f.getInfo != nil {
-		return f.getInfo(ctx)
-	}
-
-	return &lightning.Info{
-		Pubkey: rootPubkey,
-	}, nil
-}
-
-func (f fakeLightninger) DescribeGraph(ctx context.Context) (*lightning.Graph, error) {
-	if f.describeGraph != nil {
-		return f.describeGraph(ctx)
-	}
-
-	n := lightning.Node{
-		PubKey:  rootPubkey,
-		Alias:   rootAlias,
-		Updated: time.Time{},
-	}
-
-	return &lightning.Graph{
-		Nodes: []lightning.Node{n},
-	}, nil
-}
-
-func (f fakeLightninger) ListChannels(ctx context.Context) (lightning.Channels, error) {
-	if f.listChannels != nil {
-		return f.listChannels(ctx)
-	}
-
-	return nil, nil
-}
-
-func (f fakeLightninger) SetFees(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error {
-	if f.setFees != nil {
-		return f.setFees(ctx, channelID, fee)
-	}
-
-	return nil
-}
 
 func TestRaiju_Candidates(t *testing.T) {
 	type fields struct {
@@ -98,7 +32,19 @@ func TestRaiju_Candidates(t *testing.T) {
 		{
 			name: "zero graph",
 			fields: fields{
-				l: fakeLightninger{},
+				l: &lightningerMock{
+					DescribeGraphFunc: func(ctx context.Context) (*lightning.Graph, error) {
+						return &lightning.Graph{
+							Nodes: []lightning.Node{},
+							Edges: []lightning.Edge{},
+						}, nil
+					},
+					GetInfoFunc: func(ctx context.Context) (*lightning.Info, error) {
+						return &lightning.Info{
+							Pubkey: rootPubkey,
+						}, nil
+					},
+				},
 			},
 			args: args{
 				request: CandidatesRequest{},
@@ -119,6 +65,294 @@ func TestRaiju_Candidates(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Raiju.Candidates() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNew(t *testing.T) {
+	type args struct {
+		l lightninger
+	}
+	tests := []struct {
+		name string
+		args args
+		want Raiju
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := New(tt.args.l); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("New() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLiquidityFees_High(t *testing.T) {
+	type fields struct {
+		standard float64
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   lightning.FeePPM
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := LiquidityFees{
+				standard: tt.fields.standard,
+			}
+			if got := l.High(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("LiquidityFees.High() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLiquidityFees_Standard(t *testing.T) {
+	type fields struct {
+		standard float64
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   lightning.FeePPM
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := LiquidityFees{
+				standard: tt.fields.standard,
+			}
+			if got := l.Standard(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("LiquidityFees.Standard() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLiquidityFees_Low(t *testing.T) {
+	type fields struct {
+		standard float64
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   lightning.FeePPM
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := LiquidityFees{
+				standard: tt.fields.standard,
+			}
+			if got := l.Low(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("LiquidityFees.Low() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNewLiquidityFees(t *testing.T) {
+	type args struct {
+		standard float64
+	}
+	tests := []struct {
+		name string
+		args args
+		want LiquidityFees
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NewLiquidityFees(tt.args.standard); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewLiquidityFees() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_sortDistance_Less(t *testing.T) {
+	type args struct {
+		i int
+		j int
+	}
+	tests := []struct {
+		name string
+		s    sortDistance
+		args args
+		want bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.s.Less(tt.args.i, tt.args.j); got != tt.want {
+				t.Errorf("sortDistance.Less() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_sortDistance_Swap(t *testing.T) {
+	type args struct {
+		i int
+		j int
+	}
+	tests := []struct {
+		name string
+		s    sortDistance
+		args args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.s.Swap(tt.args.i, tt.args.j)
+		})
+	}
+}
+
+func Test_sortDistance_Len(t *testing.T) {
+	tests := []struct {
+		name string
+		s    sortDistance
+		want int
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.s.Len(); got != tt.want {
+				t.Errorf("sortDistance.Len() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRaiju_Fees(t *testing.T) {
+	type fields struct {
+		l lightninger
+	}
+	type args struct {
+		ctx  context.Context
+		fees LiquidityFees
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := Raiju{
+				l: tt.fields.l,
+			}
+			if err := r.Fees(tt.args.ctx, tt.args.fees); (err != nil) != tt.wantErr {
+				t.Errorf("Raiju.Fees() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRaiju_Rebalance(t *testing.T) {
+	type fields struct {
+		l lightninger
+	}
+	type args struct {
+		ctx           context.Context
+		outChannelID  lightning.ChannelID
+		lastHopPubkey string
+		percent       float64
+		max           lightning.FeePPM
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := Raiju{
+				l: tt.fields.l,
+			}
+			if err := r.Rebalance(tt.args.ctx, tt.args.outChannelID, tt.args.lastHopPubkey, tt.args.percent, tt.args.max); (err != nil) != tt.wantErr {
+				t.Errorf("Raiju.Rebalance() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRaiju_RebalanceAll(t *testing.T) {
+	type fields struct {
+		l lightninger
+	}
+	type args struct {
+		ctx     context.Context
+		percent float64
+		max     lightning.FeePPM
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := Raiju{
+				l: tt.fields.l,
+			}
+			if err := r.RebalanceAll(tt.args.ctx, tt.args.percent, tt.args.max); (err != nil) != tt.wantErr {
+				t.Errorf("Raiju.RebalanceAll() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRaiju_Reaper(t *testing.T) {
+	type fields struct {
+		l lightninger
+	}
+	type args struct {
+		ctx context.Context
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    lightning.Channels
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := Raiju{
+				l: tt.fields.l,
+			}
+			got, err := r.Reaper(tt.args.ctx)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Raiju.Reaper() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Raiju.Reaper() = %v, want %v", got, tt.want)
 			}
 		})
 	}

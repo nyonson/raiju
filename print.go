@@ -5,8 +5,8 @@ import (
 	"github.com/rodaine/table"
 )
 
-// PrintNodes in table formatted list.
-func PrintNodes(nodes []RelativeNode) error {
+// printNodes in table formatted list.
+func printNodes(nodes []RelativeNode) error {
 	tbl := table.New("Pubkey", "Alias", "Distance", "Distant Neighbors", "Capacity (BTC)", "Channels", "Updated", "Addresses")
 
 	for _, v := range nodes {
@@ -17,8 +17,8 @@ func PrintNodes(nodes []RelativeNode) error {
 	return nil
 }
 
-// PrintChannels in table formatted list.
-func PrintChannels(channels lightning.Channels) error {
+// printChannels in table formatted list.
+func printChannels(channels lightning.Channels) error {
 	tbl := table.New("Channel ID", "Alias", "Capacity (BTC)")
 
 	for _, c := range channels {

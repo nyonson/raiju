@@ -2,6 +2,13 @@
 @help:
   just --list --justfile {{justfile()}} --list-heading $'raiju\n'
 
+# generate test boilerplate code including marked interface stubs and test tables for exported functions
+@generate:
+	go install github.com/cweill/gotests/gotests@latest
+	go install github.com/matryer/moq@v0.3.1
+	find . -type f -name "*.go" ! -name "*test.go" -exec gotests -exported -w '{}' \;  
+	go generate ./...
+
 # install the executable
 @install:
   go install cmd/raiju/raiju.go

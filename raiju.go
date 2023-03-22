@@ -11,6 +11,7 @@ import (
 	"github.com/nyonson/raiju/lightning"
 )
 
+//go:generate moq -stub -skip-ensure -out lightninger_mock_test.go . lightninger
 type lightninger interface {
 	AddInvoice(ctx context.Context, amount lightning.Satoshi) (lightning.Invoice, error)
 	DescribeGraph(ctx context.Context) (*lightning.Graph, error)
@@ -193,10 +194,16 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 	var count int64 = 1
 	visited := make(map[string]bool)
 
-	current := nodes[request.Pubkey].neighbors
-	for len(current) > 0 {
+	neighbors := make([]string, 0)
+
+	// handle strange case where node doesn't exist
+	if n, ok := nodes[request.Pubkey]; ok {
+		neighbors = n.neighbors
+	}
+
+	for len(neighbors) > 0 {
 		next := make([]string, 0)
-		for _, n := range current {
+		for _, n := range neighbors {
 			if !visited[n] {
 				nodes[n].distance = count
 				visited[n] = true
@@ -209,7 +216,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 			}
 		}
 		count++
-		current = next
+		neighbors = next
 	}
 
 	unfilteredSpan := make([]RelativeNode, 0)
@@ -252,7 +259,11 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 		return span, nil
 	}
 
-	return span[:request.Limit], nil
+	candidates := span[:request.Limit]
+
+	printNodes(candidates)
+
+	return candidates, nil
 }
 
 // Fees to encourage a balanced channel.
@@ -349,16 +360,16 @@ func (r Raiju) RebalanceAll(ctx context.Context, percent float64, max lightning.
 }
 
 // Reaper calculates inefficient channels which should be closed.
-func (r Raiju) Reaper(ctx context.Context) error {
+func (r Raiju) Reaper(ctx context.Context) (lightning.Channels, error) {
 	// pull the last month of forwards
 	forwards, err := r.l.ForwardingHistory(ctx, time.Now().AddDate(0, -1, 0))
 	if err != nil {
-		return err
+		return lightning.Channels{}, err
 	}
 
 	channels, err := r.l.ListChannels(ctx)
 	if err != nil {
-		return err
+		return lightning.Channels{}, err
 	}
 
 	// initialize tracker
@@ -379,7 +390,7 @@ func (r Raiju) Reaper(ctx context.Context) error {
 		}
 	}
 
-	PrintChannels(inefficient)
+	printChannels(inefficient)
 
-	return nil
+	return inefficient, nil
 }

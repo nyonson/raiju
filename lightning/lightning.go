@@ -43,6 +43,7 @@ func (f FeePPM) Rate() float64 {
 	return float64(f) / 1000000
 }
 
+// Forward routing event.
 type Forward struct {
 	Timestamp  time.Time
 	ChannelIn  ChannelID

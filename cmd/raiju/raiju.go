@@ -89,15 +89,9 @@ func main() {
 				Clearnet: *clearnet,
 			}
 
-			nodes, err := r.Candidates(ctx, request)
+			_, err = r.Candidates(ctx, request)
 
-			if err != nil {
-				return err
-			}
-
-			raiju.PrintNodes(nodes)
-
-			return nil
+			return err
 		},
 	}
 
@@ -226,7 +220,9 @@ func main() {
 			c := lightning.New(services.Client, services.Client, services.Router)
 			r := raiju.New(c)
 
-			return r.Reaper(ctx)
+			_, err = r.Reaper(ctx)
+
+			return err
 		},
 	}
 
