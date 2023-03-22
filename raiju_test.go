@@ -265,66 +265,6 @@ func TestRaiju_Fees(t *testing.T) {
 	}
 }
 
-func TestRaiju_Rebalance(t *testing.T) {
-	type fields struct {
-		l lightninger
-	}
-	type args struct {
-		ctx           context.Context
-		outChannelID  lightning.ChannelID
-		lastHopPubkey string
-		percent       float64
-		max           lightning.FeePPM
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := Raiju{
-				l: tt.fields.l,
-			}
-			if err := r.Rebalance(tt.args.ctx, tt.args.outChannelID, tt.args.lastHopPubkey, tt.args.percent, tt.args.max); (err != nil) != tt.wantErr {
-				t.Errorf("Raiju.Rebalance() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestRaiju_RebalanceAll(t *testing.T) {
-	type fields struct {
-		l lightninger
-	}
-	type args struct {
-		ctx     context.Context
-		percent float64
-		max     lightning.FeePPM
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := Raiju{
-				l: tt.fields.l,
-			}
-			if err := r.RebalanceAll(tt.args.ctx, tt.args.percent, tt.args.max); (err != nil) != tt.wantErr {
-				t.Errorf("Raiju.RebalanceAll() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
 func TestRaiju_Reaper(t *testing.T) {
 	type fields struct {
 		l lightninger
@@ -353,6 +293,74 @@ func TestRaiju_Reaper(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Raiju.Reaper() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRaiju_Rebalance(t *testing.T) {
+	type fields struct {
+		l lightninger
+	}
+	type args struct {
+		ctx           context.Context
+		outChannelID  lightning.ChannelID
+		lastHopPubkey string
+		stepPercent   float64
+		maxPercent    float64
+		maxFee        lightning.FeePPM
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    float64
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := Raiju{
+				l: tt.fields.l,
+			}
+			got, err := r.Rebalance(tt.args.ctx, tt.args.outChannelID, tt.args.lastHopPubkey, tt.args.stepPercent, tt.args.maxPercent, tt.args.maxFee)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Raiju.Rebalance() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Raiju.Rebalance() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRaiju_RebalanceAll(t *testing.T) {
+	type fields struct {
+		l lightninger
+	}
+	type args struct {
+		ctx         context.Context
+		stepPercent float64
+		maxPercent  float64
+		maxFee      lightning.FeePPM
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := Raiju{
+				l: tt.fields.l,
+			}
+			if err := r.RebalanceAll(tt.args.ctx, tt.args.stepPercent, tt.args.maxPercent, tt.args.maxFee); (err != nil) != tt.wantErr {
+				t.Errorf("Raiju.RebalanceAll() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
