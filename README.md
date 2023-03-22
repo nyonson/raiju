@@ -51,6 +51,8 @@ Pubkey                                                              Alias       
 
 The `assume` flag allows you to see the remaining set of nodes assuming channels were opened to a candidate. This can be used to find a set of nodes to open channels too in single batch transaction in order to minimize on onchain fees.
 
+By default, only clearnet nodes are listed. TOR nodes tend to be unreliable due to the nature of TOR.
+
 ## fees
 
 Set channel fees based on the channel's current liquidity.
@@ -100,22 +102,24 @@ WantedBy=timers.target
 
 Circular rebalance a channel or all channels that aren't doing so hot liquidity-wise.
 
-Where the `fees` command attempts to balance channels passively, this is an *active* approach where liquidity is manually pushed. The cost of active rebalancing are the lightning payment fees.
+Where the `fees` command attempts to balance channels passively, this is an *active* approach where liquidity is manually pushed. The cost of active rebalancing are the lightning payment fees. While this command could be used to push large amounts of liquidity, the default settings are intended to just prod things in the right direction. The maximum fee ppm setting uses the low liquidity fee setting by default, which theoretically, means that even if a rebalance is instantly canceled out by a large payment at least fees are re-coup'd.   
 
 The command takes two arguments:
-1. A percentage of the channel capacity to attempt to rebalance.
-2. The maximum ppm fee of the rebalance amount willing to be paid.
+1. A percentage of the channel capacity to attempt to rebalance per circular payment (the "step").
+2. The maximum percentage of the channel capacity to attempt to rebalance.
+
+A smaller step percentage will increase the likely hood of a successful payment, but might also increase fees a bit if the payment collects a lot of `base_fee`s.
 
 If output channel and last hop node flags are specified, than just those channels will be rebalanced. The following example is pushing 1% of the channel `754031881261074944`'s capacity to the channel with the `03963169ddfcc5cc6afaff7764fa20dc2e21e9ed8ef0ff0ccd18137d62ae2e01f4` node. A max fee of `2000` ppm will be paid. 
 
 ```
-$ raiju rebalance -last-hop-pubkey 03963169ddfcc5cc6afaff7764fa20dc2e21e9ed8ef0ff0ccd18137d62ae2e01f4 -out-channel-id 754031881261074944 1
+$ raiju rebalance -last-hop-pubkey 03963169ddfcc5cc6afaff7764fa20dc2e21e9ed8ef0ff0ccd18137d62ae2e01f4 -out-channel-id 754031881261074944 1 1
 ```
 
-If no out channel and last hop pubkey are given, the command will roll through all channels with high liquidity (as defined by raiju) and attempt to push it through channels of low liquidity (as defined by raiju). Be careful, there are not a lot of smarts built in to this command and it has the potential to over rebalance.
+If no out channel and last hop pubkey are given, the command will roll through all channels with high liquidity (as defined by raiju) and attempt to push it through channels of low liquidity (as defined by raiju).
 
 ```
-$ raiju rebalance 1 
+$ raiju rebalance 1 1 
 ```
 
 Why is the out channel a channel ID while the last hop (a.k.a. in channel) a pubkey? This is due to the lightning Network's protocol allowing for [non-strict forwarding](https://github.com/lightning/bolts/blob/master/04-onion-routing.md#non-strict-forwarding). There might be some ways to specify an in channel, but I haven't put too much thought into it yet. 
