@@ -23,10 +23,12 @@ type lightninger interface {
 	SetFees(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error
 }
 
+// Raiju app.
 type Raiju struct {
 	l lightninger
 }
 
+// New instance of raiju.
 func New(l lightninger) Raiju {
 	return Raiju{
 		l: l,
@@ -291,40 +293,46 @@ func (r Raiju) Fees(ctx context.Context, fees LiquidityFees) error {
 	return nil
 }
 
-// Rebalance channel.
-func (r Raiju) Rebalance(ctx context.Context, outChannelID lightning.ChannelID, lastHopPubkey string, percent float64, max lightning.FeePPM) error {
+// Rebalance liquidity out of outChannelID and in through lastHopPubkey and returns the percent of capacity rebalanced.
+//
+// The amount of sats rebalanced is based on the capacity of the out channel. Each rebalance attempt will try to move
+// stepPercent worth of sats. A maximum of maxPercent of sats will be moved. The maxFee in ppm controls the amount
+// willing to pay for rebalance.
+func (r Raiju) Rebalance(ctx context.Context, outChannelID lightning.ChannelID, lastHopPubkey string, stepPercent float64, maxPercent float64, maxFee lightning.FeePPM) (float64, error) {
 	// calculate invoice value
 	c, err := r.l.GetChannel(ctx, outChannelID)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	amount := int64(float64(c.Capacity) * percent / 100)
+	amount := int64(float64(c.Capacity) * stepPercent / 100)
 	// add 0.5 so rounds up to at least 1
-	maxFee := int64(math.Round(max.Rate()*float64(amount) + 0.5))
+	maxFeeSats := int64(math.Round(maxFee.Rate()*float64(amount) + 0.5))
+	percentRebalanced := float64(0)
 
-	fmt.Fprintf(os.Stderr, "attempting rebalance %d sats out of %d to %s with a %d max fee...\n", amount, outChannelID, lastHopPubkey, maxFee)
-
-	// create invoice
-	invoice, err := r.l.AddInvoice(ctx, lightning.Satoshi(amount))
-	if err != nil {
-		return err
+	for percentRebalanced < maxPercent {
+		fmt.Fprintf(os.Stderr, "attempting rebalance %d sats out of %d to %s with a %d max fee...\n", amount, outChannelID, lastHopPubkey, maxFeeSats)
+		// create and pay invoice
+		invoice, err := r.l.AddInvoice(ctx, lightning.Satoshi(amount))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "rebalance failed\n")
+			return percentRebalanced, nil
+		}
+		feePaidSats, err := r.l.SendPayment(ctx, invoice, outChannelID, lastHopPubkey, lightning.Satoshi(maxFeeSats))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "rebalance failed\n")
+			return percentRebalanced, nil
+		}
+		fmt.Fprintf(os.Stderr, "rebalance success %d sats out of %d to %s for a %d sats fee\n", amount, outChannelID, lastHopPubkey, feePaidSats)
+		percentRebalanced += stepPercent
+		fmt.Fprintf(os.Stderr, "rebalance has moved %f of %f percent of the channel capacity", percentRebalanced, maxPercent)
 	}
 
-	// pay invoice
-	fee, err := r.l.SendPayment(ctx, invoice, outChannelID, lastHopPubkey, lightning.Satoshi(maxFee))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "rebalance failed\n")
-		return err
-	}
-
-	fmt.Fprintf(os.Stderr, "rebalance success %d sats out of %d to %s for a %d sats fee\n", amount, outChannelID, lastHopPubkey, fee)
-
-	return nil
+	return percentRebalanced, nil
 }
 
 // RebalanceAll channels.
-func (r Raiju) RebalanceAll(ctx context.Context, percent float64, max lightning.FeePPM) error {
+func (r Raiju) RebalanceAll(ctx context.Context, stepPercent float64, maxPercent float64, maxFee lightning.FeePPM) error {
 	local, err := r.l.GetInfo(ctx)
 	if err != nil {
 		return err
@@ -337,6 +345,7 @@ func (r Raiju) RebalanceAll(ctx context.Context, percent float64, max lightning.
 
 	// Roll through high liquidity channels and try to push things through the low liquidity ones.
 	for _, h := range channels.HighLiquidity() {
+		percentRebalanced := float64(0)
 		for _, l := range channels.LowLiquidity() {
 			// get the non-local node of the channel
 			lastHopPubkey := l.Node1
@@ -351,7 +360,8 @@ func (r Raiju) RebalanceAll(ctx context.Context, percent float64, max lightning.
 			}
 			if ul.LiquidityLevel() == lightning.LowLiquidity {
 				// don't really care if error or not, just continue on
-				r.Rebalance(ctx, h.ChannelID, lastHopPubkey, percent, max)
+				p, _ := r.Rebalance(ctx, h.ChannelID, lastHopPubkey, stepPercent, (maxPercent - percentRebalanced), maxFee)
+				percentRebalanced += p
 			}
 		}
 	}

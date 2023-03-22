@@ -141,13 +141,13 @@ func main() {
 
 	rebalanceCmd := &ffcli.Command{
 		Name:       "rebalance",
-		ShortUsage: "raiju rebalance <percent>",
+		ShortUsage: "raiju rebalance <step-percent> <max-percent>",
 		ShortHelp:  "Send circular payment(s) to actively rebalance channels",
 		LongHelp:   "If the output and input flags are set, a rebalance is attempted (both must be set together). If not, channels are grouped into three coarse grained buckets: standard, high, and low. Standard channels will be ignored since their liquidity is good. High channels will attempt to push the percent of their capacity at a time to the low channels, stopping if their liquidity improves enough or if all channels have been tried.",
 		FlagSet:    rebalanceFlagSet,
 		Exec: func(ctx context.Context, args []string) error {
-			if len(args) != 1 {
-				return errors.New("rebalance takes one arg")
+			if len(args) != 2 {
+				return errors.New("rebalance takes two args")
 			}
 
 			// must be set together
@@ -155,9 +155,14 @@ func main() {
 				return errors.New("out-channel-id and last-hop-pubkey must be set together")
 			}
 
-			percent, err := strconv.ParseFloat(args[0], 64)
+			stepPercent, err := strconv.ParseFloat(args[0], 64)
 			if err != nil {
 				return fmt.Errorf("unable to parse arg: %s", args[0])
+			}
+
+			maxPercent, err := strconv.ParseFloat(args[1], 64)
+			if err != nil {
+				return fmt.Errorf("unable to parse arg: %s", args[1])
 			}
 
 			cfg := &lndclient.LndServicesConfig{
@@ -177,15 +182,15 @@ func main() {
 			fees := raiju.NewLiquidityFees(*standardLiquidityFeePPM)
 
 			// default to low liquidity fee, override with flag
-			max := fees.Low()
+			maxFee := fees.Low()
 			if *maxFeePPM != 0 {
-				max = lightning.FeePPM(*maxFeePPM)
+				maxFee = lightning.FeePPM(*maxFeePPM)
 			}
 
 			if *lastHopPubkey != "" {
-				err = r.Rebalance(ctx, lightning.ChannelID(*outChannelID), *lastHopPubkey, percent, max)
+				_, err = r.Rebalance(ctx, lightning.ChannelID(*outChannelID), *lastHopPubkey, stepPercent, maxPercent, maxFee)
 			} else {
-				err = r.RebalanceAll(ctx, percent, max)
+				err = r.RebalanceAll(ctx, stepPercent, maxPercent, maxFee)
 			}
 
 			return err
