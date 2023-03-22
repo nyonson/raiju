@@ -329,7 +329,7 @@ func (r Raiju) Rebalance(ctx context.Context, outChannelID lightning.ChannelID, 
 		}
 		fmt.Fprintf(os.Stderr, "rebalance success %d sats out of %d to %s for a %d sats fee\n", amount, outChannelID, lastHopPubkey, feePaidSats)
 		percentRebalanced += stepPercent
-		fmt.Fprintf(os.Stderr, "rebalance has moved %f of %f percent of the channel capacity", percentRebalanced, maxPercent)
+		fmt.Fprintf(os.Stderr, "rebalance has moved %f of %f percent of the channel capacity\n", percentRebalanced, maxPercent)
 	}
 
 	return percentRebalanced, nil
