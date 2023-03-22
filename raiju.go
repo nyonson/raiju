@@ -76,6 +76,7 @@ type RelativeNode struct {
 // sortDistance sorts nodes by distance, distant neighbors, capacity, and channels
 type sortDistance []RelativeNode
 
+// Less is true if i is closer than j.
 func (s sortDistance) Less(i, j int) bool {
 	if s[i].distance != s[j].distance {
 		return s[i].distance < s[j].distance
@@ -92,10 +93,12 @@ func (s sortDistance) Less(i, j int) bool {
 	return s[i].channels < s[j].channels
 }
 
+// Swap nodes in slice.
 func (s sortDistance) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
+// Len of the relative node slice.
 func (s sortDistance) Len() int {
 	return len(s)
 }

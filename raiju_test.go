@@ -4,14 +4,18 @@ import (
 	"context"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/nyonson/raiju/lightning"
 )
 
 const (
-	rootPubkey  = "111111111112300000000000000000000000000000000000000000000000000000"
-	rootAlias   = "raiju"
-	rootUpdated = "2020-01-02T15:04:05Z"
+	pubkey = "111111111112300000000000000000000000000000000000000000000000000000"
+	alias  = "raiju"
+)
+
+var (
+	updated, _ = time.Parse(time.RFC3339, "2020-01-02T15:04:05Z")
 )
 
 func TestRaiju_Candidates(t *testing.T) {
@@ -41,7 +45,7 @@ func TestRaiju_Candidates(t *testing.T) {
 					},
 					GetInfoFunc: func(ctx context.Context) (*lightning.Info, error) {
 						return &lightning.Info{
-							Pubkey: rootPubkey,
+							Pubkey: pubkey,
 						}, nil
 					},
 				},
@@ -79,7 +83,15 @@ func TestNew(t *testing.T) {
 		args args
 		want Raiju
 	}{
-		// TODO: Add test cases.
+		{
+			name: "happy init",
+			args: args{
+				l: nil,
+			},
+			want: Raiju{
+				l: nil,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -99,7 +111,13 @@ func TestLiquidityFees_High(t *testing.T) {
 		fields fields
 		want   lightning.FeePPM
 	}{
-		// TODO: Add test cases.
+		{
+			name: "high fees should be 10%",
+			fields: fields{
+				standard: 10,
+			},
+			want: 1,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -122,7 +140,13 @@ func TestLiquidityFees_Standard(t *testing.T) {
 		fields fields
 		want   lightning.FeePPM
 	}{
-		// TODO: Add test cases.
+		{
+			name: "standard fees should be 100%",
+			fields: fields{
+				standard: 10,
+			},
+			want: 10,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -145,7 +169,13 @@ func TestLiquidityFees_Low(t *testing.T) {
 		fields fields
 		want   lightning.FeePPM
 	}{
-		// TODO: Add test cases.
+		{
+			name: "low fees should be 1000%",
+			fields: fields{
+				standard: 10,
+			},
+			want: 100,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -168,7 +198,15 @@ func TestNewLiquidityFees(t *testing.T) {
 		args args
 		want LiquidityFees
 	}{
-		// TODO: Add test cases.
+		{
+			name: "happy init",
+			args: args{
+				standard: 0,
+			},
+			want: LiquidityFees{
+				standard: 0,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -190,7 +228,191 @@ func Test_sortDistance_Less(t *testing.T) {
 		args args
 		want bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "sort by distance first",
+			s: []RelativeNode{
+				{
+					Node: lightning.Node{
+						PubKey:    pubkey,
+						Alias:     alias,
+						Updated:   updated,
+						Addresses: []string{},
+					},
+					distance:        0,
+					distantNeigbors: 0,
+					channels:        0,
+					capacity:        0,
+					neighbors:       []string{},
+				},
+				{
+					Node: lightning.Node{
+						PubKey:    pubkey,
+						Alias:     alias,
+						Updated:   updated,
+						Addresses: []string{},
+					},
+					distance:        1,
+					distantNeigbors: 0,
+					channels:        0,
+					capacity:        0,
+					neighbors:       []string{},
+				},
+			},
+
+			args: args{
+				i: 0,
+				j: 1,
+			},
+			want: true,
+		},
+		{
+			name: "sort by neighbors second",
+			s: []RelativeNode{
+				{
+					Node: lightning.Node{
+						PubKey:    pubkey,
+						Alias:     alias,
+						Updated:   updated,
+						Addresses: []string{},
+					},
+					distance:        1,
+					distantNeigbors: 0,
+					channels:        0,
+					capacity:        0,
+					neighbors:       []string{},
+				},
+				{
+					Node: lightning.Node{
+						PubKey:    pubkey,
+						Alias:     alias,
+						Updated:   updated,
+						Addresses: []string{},
+					},
+					distance:        1,
+					distantNeigbors: 1,
+					channels:        0,
+					capacity:        0,
+					neighbors:       []string{},
+				},
+			},
+
+			args: args{
+				i: 0,
+				j: 1,
+			},
+			want: true,
+		},
+		{
+			name: "sort by capacity third",
+			s: []RelativeNode{
+				{
+					Node: lightning.Node{
+						PubKey:    pubkey,
+						Alias:     alias,
+						Updated:   updated,
+						Addresses: []string{},
+					},
+					distance:        1,
+					distantNeigbors: 1,
+					channels:        0,
+					capacity:        0,
+					neighbors:       []string{},
+				},
+				{
+					Node: lightning.Node{
+						PubKey:    pubkey,
+						Alias:     alias,
+						Updated:   updated,
+						Addresses: []string{},
+					},
+					distance:        1,
+					distantNeigbors: 1,
+					channels:        0,
+					capacity:        1,
+					neighbors:       []string{},
+				},
+			},
+
+			args: args{
+				i: 0,
+				j: 1,
+			},
+			want: true,
+		},
+		{
+			name: "sort by channels forth",
+			s: []RelativeNode{
+				{
+					Node: lightning.Node{
+						PubKey:    pubkey,
+						Alias:     alias,
+						Updated:   updated,
+						Addresses: []string{},
+					},
+					distance:        1,
+					distantNeigbors: 1,
+					channels:        0,
+					capacity:        1,
+					neighbors:       []string{},
+				},
+				{
+					Node: lightning.Node{
+						PubKey:    pubkey,
+						Alias:     alias,
+						Updated:   updated,
+						Addresses: []string{},
+					},
+					distance:        1,
+					distantNeigbors: 1,
+					channels:        1,
+					capacity:        1,
+					neighbors:       []string{},
+				},
+			},
+
+			args: args{
+				i: 0,
+				j: 1,
+			},
+			want: true,
+		},
+		{
+			name: "all things same is a false",
+			s: []RelativeNode{
+				{
+					Node: lightning.Node{
+						PubKey:    pubkey,
+						Alias:     alias,
+						Updated:   updated,
+						Addresses: []string{},
+					},
+					distance:        0,
+					distantNeigbors: 0,
+					channels:        0,
+					capacity:        0,
+					neighbors:       []string{},
+				},
+				{
+					Node: lightning.Node{
+						PubKey:    pubkey,
+						Alias:     alias,
+						Updated:   updated,
+						Addresses: []string{},
+					},
+					distance:        0,
+					distantNeigbors: 0,
+					channels:        0,
+					capacity:        0,
+					neighbors:       []string{},
+				},
+			},
+
+			args: args{
+				i: 0,
+				j: 1,
+			},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -211,10 +433,34 @@ func Test_sortDistance_Swap(t *testing.T) {
 		s    sortDistance
 		args args
 	}{
-		// TODO: Add test cases.
+		{
+			name: "happy swap",
+			s: []RelativeNode{
+				{
+					Node:            lightning.Node{},
+					distance:        0,
+					distantNeigbors: 0,
+					channels:        0,
+					capacity:        0,
+					neighbors:       []string{},
+				},
+				{
+					Node:            lightning.Node{},
+					distance:        0,
+					distantNeigbors: 0,
+					channels:        0,
+					capacity:        0,
+					neighbors:       []string{},
+				},
+			},
+			args: args{
+				i: 0,
+				j: 1,
+			},
+		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_ *testing.T) {
 			tt.s.Swap(tt.args.i, tt.args.j)
 		})
 	}
@@ -226,7 +472,25 @@ func Test_sortDistance_Len(t *testing.T) {
 		s    sortDistance
 		want int
 	}{
-		// TODO: Add test cases.
+		{
+			name: "happy length",
+			s: []RelativeNode{
+				{
+					Node: lightning.Node{
+						PubKey:    pubkey,
+						Alias:     alias,
+						Updated:   updated,
+						Addresses: []string{},
+					},
+					distance:        0,
+					distantNeigbors: 0,
+					channels:        0,
+					capacity:        0,
+					neighbors:       []string{},
+				},
+			},
+			want: 1,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
