@@ -360,6 +360,7 @@ func (r Raiju) RebalanceAll(ctx context.Context, stepPercent float64, maxPercent
 
 	// Roll through high liquidity channels and try to push things through the low liquidity ones.
 	for _, h := range hlcs {
+		fmt.Fprintf(os.Stderr, "channel %d with %s has high liquidity, attempting to rebalancing into low liquidity channels\n", h.ChannelID, h.RemoteNode.Alias)
 		percentRebalanced := float64(0)
 		for _, l := range llcs {
 			// get the non-local node of the channel
@@ -377,8 +378,11 @@ func (r Raiju) RebalanceAll(ctx context.Context, stepPercent float64, maxPercent
 				// don't really care if error or not, just continue on
 				p, _ := r.Rebalance(ctx, h.ChannelID, lastHopPubkey, stepPercent, (maxPercent - percentRebalanced), maxFee)
 				percentRebalanced += p
+			} else {
+				fmt.Fprintf(os.Stderr, "channel %d with %s no longer has low liquidity\n", ul.ChannelID, ul.RemoteNode.Alias)
 			}
 		}
+		fmt.Fprintf(os.Stderr, "rebalanced %f percent of channel %d with %s\n", percentRebalanced, h.ChannelID, h.RemoteNode.Alias)
 	}
 
 	return nil
