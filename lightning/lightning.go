@@ -80,7 +80,7 @@ type Edge struct {
 	Node2    string
 }
 
-// Nodes and edges of the Lightning Network.
+// Graph of nodes and edges of the Lightning Network.
 type Graph struct {
 	Nodes []Node
 	Edges []Edge
@@ -96,7 +96,7 @@ const (
 	HighLiquidity     ChannelLiquidityLevel = "high"
 )
 
-// Detailed information of a payment channel between nodes.
+// Channel between local and remote node.
 type Channel struct {
 	Edge
 	ChannelID     ChannelID

@@ -111,7 +111,7 @@ type CandidatesRequest struct {
 	MinCapacity int64
 	// MinChannels filters nodes with a minimum number of channels
 	MinChannels int64
-	// MinDistance filters nodes with a minumum distance (number of hops) from the root node
+	// MinDistance filters nodes with a minimum distance (number of hops) from the root node
 	MinDistance int64
 	// MinNeighborDistance is the distance required for a node to be considered a distanct neighbor
 	MinNeighborDistance int64
@@ -232,7 +232,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 
 	// calculate number of distant neighbors per node
 	for i := range unfilteredSpan {
-		var count int64 = 0
+		var count int64
 		for _, n := range unfilteredSpan[i].neighbors {
 			if nodes[n].distance > request.MinNeighborDistance {
 				count++
