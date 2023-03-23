@@ -31,7 +31,7 @@ All of `raiju`'s commands can be listed with the global help flag, `raiju -h`, a
 
 Find the best nodes to open a channel. `candidates` lists nodes by a few heuristics from best to worst. `candidates` does not open any channels though, that needs to be done out-of-band with a different tool such as `lncli`. `candidates` just lists suggestions and is not intended to be automated (for now...). 
 
-The current node has distance `0` to itself and distance `1` to the nodes it has channels with. A node with distance `2` is a node who has a channel with a node the current node is connected too, and so on. "Distant Neighbors" are the number of direct connections which a candidate node has with distant nodes from the current node. Theoretically, these most distant nodes with the most distant neighbor connections are the best to open a channel to for some off the beaten path (vs. just connecting to the biggest node in the network) more efficient routing (a.k.a. lower fees through the current node because a lot less hops).  
+The current node has distance `0` to itself and distance `1` to the nodes it has channels with. A node with distance `2` is a node who has a channel with a node the current node is connected too, and so on. "Distant Neighbors" are the number of nodes a candidate has a channel with who are distant from the current node. Theoretically, these most distant nodes with the most distant neighbor connections are the best to open a channel to for some off the beaten path (vs. just connecting to the biggest node in the network) more efficient routing (a.k.a. lower fees through the current node because a lot less hops).  
 
 ```
 $ raiju candidates
@@ -43,9 +43,9 @@ Pubkey                                                              Alias       
 ...
 ```
 
-The `assume` flag allows you to see the remaining set of nodes assuming channels were opened to the given candidates. This can be used to find a set of nodes to open channels too in single batch transaction in order to minimize on onchain fees.
+The `assume` flag allows you to see the remaining candidates and updated stats assuming channels were opened to the given nodes. This can be used to find a set of nodes to open channels too in single batch transaction in order to minimize on onchain fees.
 
-By default, only clearnet nodes are listed. TOR nodes tend to be unreliable due to the nature of TOR.
+By default, only nodes with clearnet addresses are listed. TOR-only nodes tend to be unreliable due to the nature of TOR.
 
 ## fees
 
