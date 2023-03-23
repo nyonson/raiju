@@ -192,7 +192,7 @@ docker run -it \
 
 # configuration
 
-*Global* flags (can be found with `raiju -h`), not command flags (e.g. `raiju candidates -h`), can also be set through environment variables or with a configuration file. CLI flags overwrite environment variables which overwrite the configuration file values.
+*Global* flags (can be found with `raiju -h`) can be set through environment variables or with a configuration file. CLI flags overwrite environment variables which overwrite the configuration file values.
 
 Environment variables have a `RAIJU_` prefix on the flag name. For example, the global flag `host` can be set with the `RAIJU_HOST` environment variable.
 
