@@ -25,15 +25,11 @@ Raiju helps automate the channel life-cycle: creating, liquidity management, and
 
 # commands 
 
-All of Raiju's commands can be listed with the global help flag.
-
-```
-raiju -h
-```
+All of Raiju's commands can be listed with the global help flag, `raiju -h`, and each command has its own help (e.g. `raiju candidates -h`).
 
 ## candidates
 
-Find the best nodes to open a channel. `candidates` lists nodes by distance descending.
+Find the best nodes to open a channel. `candidates` lists nodes by a few hearistics from best to worst. `candidates` does not open any channels though, that needs to be done out of band with a different tool such as `lncli`. `candidates` just lists suggestions for now and is not intended to be automated (for now...). 
 
 Theoretically these are desirable nodes to open channels to because they are well connected, but far (a.k.a. fees) away from the current node. The `Distant Neighbors` metric is the number of channels that node has with distant nodes from the root node.
 
@@ -156,7 +152,7 @@ WantedBy=timers.target
 
 ## reaper
 
-Find channels which should be closed and re-allocated.
+Find channels which should be closed and re-allocated. Similar to the `candidates` command, these are just suggestions and no channels are automatically closed. They must be closed out-of-band with another tool like `lncli`. This might be made automated in the future.
 
 ```
 $ raiju reaper
@@ -196,7 +192,7 @@ docker run -it \
 
 All flags can be found with the help flag `-h`.
 
-*Global* flags,not subcommand flags, can also be set through environment variables or with a configuration file. CLI flags overwrite environment variables which overwrite the configuration file values.
+*Global* flags, not command flags, can also be set through environment variables or with a configuration file. CLI flags overwrite environment variables which overwrite the configuration file values.
 
 Environment variables have a `RAIJU_` prefix on the flag name. For example, the global flag `host` can be set with the `RAIJU_HOST` environment variable.
 
