@@ -29,9 +29,9 @@ All of `raiju`'s commands can be listed with the global help flag, `raiju -h`, a
 
 ## candidates
 
-Find the best nodes to open a channel. `candidates` lists nodes by a few hearistics from best to worst. `candidates` does not open any channels though, that needs to be done out of band with a different tool such as `lncli`. `candidates` just lists suggestions for now and is not intended to be automated (for now...). 
+Find the best nodes to open a channel. `candidates` lists nodes by a few hearistics from best to worst. `candidates` does not open any channels though, that needs to be done out-of-band with a different tool such as `lncli`. `candidates` just lists suggestions and is not intended to be automated (for now...). 
 
-Theoretically these are desirable nodes to open channels to because they are well connected, but far (a.k.a. fees) away from the current node. The `Distant Neighbors` metric is the number of channels that node has with distant nodes from the root node.
+Theoretically these are desirable nodes to open channels to because they are well connected, but far (a.k.a. much fees) away from the current node. The `Distant Neighbors` metric is the number of channels that node has with distant nodes from the root node.
 
 ```
 $ raiju candidates
@@ -43,7 +43,7 @@ Pubkey                                                              Alias       
 ...
 ```
 
-The `assume` flag allows you to see the remaining set of nodes assuming channels were opened to a candidate. This can be used to find a set of nodes to open channels too in single batch transaction in order to minimize on onchain fees.
+The `assume` flag allows you to see the remaining set of nodes assuming channels were opened to the given candidates. This can be used to find a set of nodes to open channels too in single batch transaction in order to minimize on onchain fees.
 
 By default, only clearnet nodes are listed. TOR nodes tend to be unreliable due to the nature of TOR.
 
@@ -187,14 +187,12 @@ docker run -it \
   candidates
 ```
 
-* Ensure the tls certificate and macaroon are mounted in the container, in the above example they are both mounted to the root and then passed in as cli flags.
+* Ensure the tls certificate and macaroon are mounted in the container, in the above example they are both mounted to the root and then theirs paths passed in as cli flags.
 * The container may need to be attached to a network depending on your network. 
 
 # configuration
 
-All flags can be found with the help flag `-h`.
-
-*Global* flags, not command flags, can also be set through environment variables or with a configuration file. CLI flags overwrite environment variables which overwrite the configuration file values.
+*Global* flags (e.g. `raiju -h` output), not command flags, can also be set through environment variables or with a configuration file. CLI flags overwrite environment variables which overwrite the configuration file values.
 
 Environment variables have a `RAIJU_` prefix on the flag name. For example, the global flag `host` can be set with the `RAIJU_HOST` environment variable.
 
