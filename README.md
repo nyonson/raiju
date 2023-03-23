@@ -10,9 +10,9 @@
 
 **Your friendly bitcoin lightning network helper.**
 
-Raiju is a CLI app which sits on top of a lightning node. It currently only supports the [lnd](https://github.com/lightningnetwork/lnd) implementation. 
+`raiju` is a CLI app which sits on top of a lightning node. Currently, `raiju` only supports the [lnd](https://github.com/lightningnetwork/lnd) implementation. 
 
-Raiju helps automate the channel life-cycle: creating, liquidity management, and closing. The `candidates` command helps open the most efficient new channels. The `fees` and `rebalance` commands automate passive and active liquidity management. And finally, the `reaper` command exposes inefficient channels to close in order to better allocate resources.
+`raiju` helps automate the channel life-cycle: creation, liquidity management, and closing. The `candidates` command helps open the most efficient new channels. The `fees` and `rebalance` commands automate passive and active liquidity management. And finally, the `reaper` command exposes inefficient channels to close in order to better allocate resources.
 
 - [commands](#commands)
   - [candidates](#candidates)
@@ -25,7 +25,7 @@ Raiju helps automate the channel life-cycle: creating, liquidity management, and
 
 # commands 
 
-All of Raiju's commands can be listed with the global help flag, `raiju -h`, and each command has its own help (e.g. `raiju candidates -h`).
+All of `raiju`'s commands can be listed with the global help flag, `raiju -h`, and each command has its own help (e.g. `raiju candidates -h`).
 
 ## candidates
 
@@ -110,7 +110,7 @@ If output channel and last hop node flags are specified, than just those channel
 $ raiju rebalance -last-hop-pubkey 03963169ddfcc5cc6afaff7764fa20dc2e21e9ed8ef0ff0ccd18137d62ae2e01f4 -out-channel-id 754031881261074944 1 1
 ```
 
-If no out channel and last hop pubkey are given, the command will roll through all channels with high liquidity (as defined by raiju) and attempt to push it through channels of low liquidity (as defined by raiju).
+If no out channel and last hop pubkey are given, the command will roll through all channels with high liquidity (as defined by `raiju`) and attempt to push it through channels of low liquidity (as defined by `raiju`).
 
 ```
 $ raiju rebalance 1 1 
@@ -165,7 +165,7 @@ Channel ID          Pubkey   Capacity (BTC)
 
 # installation
 
-To install from source, Raiju requires `go` on the system. `go install` creates a `raiju` executable.
+To install from source, `raiju` requires `go` on the system. `go install` creates a `raiju` executable.
 
 ```
 $ go install github.com/nyonson/raiju/cmd/raiju@latest
