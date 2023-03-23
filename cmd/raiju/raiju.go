@@ -21,6 +21,11 @@ import (
 	"github.com/nyonson/raiju/lnd"
 )
 
+const (
+	// Bump up from the default of 30s to 5m since a lot of raiju's commands are long pulls of data
+	rpcTimeout = time.Minute * 5
+)
+
 func main() {
 	cmdLog := log.New(os.Stderr, "raiju: ", 0)
 
@@ -50,9 +55,6 @@ func main() {
 	assume := candidatesFlagSet.String("assume", "", "Comma separated pubkeys to assume channels too")
 	limit := candidatesFlagSet.Int64("limit", 100, "Number of results")
 	clearnet := candidatesFlagSet.Bool("clearnet", true, "Filter tor-only nodes")
-
-	// Bump up from the default of 30s to 5m since a lot of raiju's commands are long pulls of data
-	rpcTimeout := time.Minute * 5
 
 	candidatesCmd := &ffcli.Command{
 		Name:       "candidates",
