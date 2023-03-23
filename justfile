@@ -18,7 +18,8 @@
   git tag -a {{tag}} -m "{{message}}"
   git push origin {{tag}}
   podman build -t ghcr.io/nyonson/raiju:latest -t ghcr.io/nyonson/raiju:{{tag}} -f Containerfile .
-  podman push ghcr.io/nyonson/raiju:latest ghcr.io/nyonson/raiju:{{tag}}
+  podman push ghcr.io/nyonson/raiju:latest
+  podman push ghcr.io/nyonson/raiju:{{tag}}
 
 # test all the codes
 @test:

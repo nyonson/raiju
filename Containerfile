@@ -22,9 +22,9 @@ FROM docker.io/alpine:3.17
 WORKDIR /
 
 # Connect image to repository
-LABEL org.opencontainers.image.source=https://github.com/nyonson/raiju
-LABEL org.opencontainers.image.description="Your friendly bitcoin lightning network helper"
-LABEL org.opencontainers.image.licenses=MIT
+LABEL org.opencontainers.image.source https://github.com/nyonson/raiju
+LABEL org.opencontainers.image.description "Your friendly bitcoin lightning network helper"
+LABEL org.opencontainers.image.licenses MIT
 
 # Copy over the executable from the builder stage
 COPY --from=builder /build/raiju . 
