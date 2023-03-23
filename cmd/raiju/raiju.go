@@ -43,9 +43,9 @@ func main() {
 
 	candidatesFlagSet := flag.NewFlagSet("candidates", flag.ExitOnError)
 	minCapacity := candidatesFlagSet.Int64("min-capacity", 1000000, "Minimum capacity of a node in satoshis")
-	minChannels := candidatesFlagSet.Int64("min-channels", 5, "Minimum channels of a node")
-	minDistance := candidatesFlagSet.Int64("min-distance", 2, "Minimum distance of a node")
-	minNeighborDistance := candidatesFlagSet.Int64("min-neighbor-distance", 2, "Minimum distance of a neighbor node")
+	minChannels := candidatesFlagSet.Int64("min-channels", 1, "Candidate must have at least this many channels")
+	minDistance := candidatesFlagSet.Int64("min-distance", 2, "Candidate must be at least this far away (0 is root node and 1 is direct connection)")
+	minNeighborDistance := candidatesFlagSet.Int64("min-neighbor-distance", 2, "Minimum distance from root node to be considered a valuable neighbor of candidate")
 	pubkey := candidatesFlagSet.String("pubkey", "", "Node to span out from, defaults to the connected node")
 	assume := candidatesFlagSet.String("assume", "", "Comma separated pubkeys to assume channels too")
 	limit := candidatesFlagSet.Int64("limit", 100, "Number of results")
@@ -63,6 +63,14 @@ func main() {
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) != 0 {
 				return errors.New("candidates doesn't take any arguments")
+			}
+
+			if *minDistance < 2 {
+				return errors.New("min-distance must be greater than 1")
+			}
+
+			if *minNeighborDistance < 2 {
+				return errors.New("min-neighbor-distance must be greater than 1")
 			}
 
 			cfg := &lndclient.LndServicesConfig{
@@ -216,7 +224,7 @@ func main() {
 		Name:       "reaper",
 		ShortUsage: "raiju reaper",
 		ShortHelp:  "Find unproductive channels",
-		LongHelp:   "",
+		LongHelp:   "Lists poorly performing channels. Currently based on the number of forwards in the past month.",
 		FlagSet:    reaperFlagSet,
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) != 0 {

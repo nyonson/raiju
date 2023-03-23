@@ -15,6 +15,9 @@ const (
 	pubKeyB         = lightning.PubKey("B")
 	pubKeyC         = lightning.PubKey("C")
 	pubKeyD         = lightning.PubKey("D")
+	pubKeyE         = lightning.PubKey("E")
+	pubKeyF         = lightning.PubKey("F")
+	pubKeyG         = lightning.PubKey("G")
 	alias           = "raiju"
 	clearnetAddress = "44.127.188.136:9735"
 )
@@ -159,6 +162,128 @@ func TestRaiju_Candidates(t *testing.T) {
 					channels:        2,
 					capacity:        2,
 					neighbors:       []lightning.PubKey{pubKeyB, pubKeyD},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "assume should look like channel and change candidates",
+			fields: fields{
+				l: &lightningerMock{
+					DescribeGraphFunc: func(ctx context.Context) (*lightning.Graph, error) {
+						// a linear network (A) <=> (B) <=> (C) <=> (D) <=> (E) <=> (F) <=> (G)
+						return &lightning.Graph{
+							Nodes: []lightning.Node{
+								{
+									PubKey:    pubKeyA,
+									Alias:     "A",
+									Updated:   updated,
+									Addresses: []string{clearnetAddress},
+								},
+								{
+									PubKey:    pubKeyB,
+									Alias:     "B",
+									Updated:   updated,
+									Addresses: []string{clearnetAddress},
+								},
+								{
+									PubKey:    pubKeyC,
+									Alias:     "C",
+									Updated:   updated,
+									Addresses: []string{clearnetAddress},
+								},
+								{
+									PubKey:    pubKeyD,
+									Alias:     "D",
+									Updated:   updated,
+									Addresses: []string{clearnetAddress},
+								},
+								{
+									PubKey:    pubKeyE,
+									Alias:     "E",
+									Updated:   updated,
+									Addresses: []string{clearnetAddress},
+								},
+								{
+									PubKey:    pubKeyF,
+									Alias:     "F",
+									Updated:   updated,
+									Addresses: []string{clearnetAddress},
+								},
+								{
+									PubKey:    pubKeyG,
+									Alias:     "G",
+									Updated:   updated,
+									Addresses: []string{clearnetAddress},
+								},
+							},
+							Edges: []lightning.Edge{
+								{
+									Capacity: 1,
+									Node1:    pubKeyA,
+									Node2:    pubKeyB,
+								},
+								{
+									Capacity: 1,
+									Node1:    pubKeyB,
+									Node2:    pubKeyC,
+								},
+								{
+									Capacity: 1,
+									Node1:    pubKeyC,
+									Node2:    pubKeyD,
+								},
+								{
+									Capacity: 1,
+									Node1:    pubKeyD,
+									Node2:    pubKeyE,
+								},
+								{
+									Capacity: 1,
+									Node1:    pubKeyE,
+									Node2:    pubKeyF,
+								},
+								{
+									Capacity: 1,
+									Node1:    pubKeyF,
+									Node2:    pubKeyG,
+								},
+							},
+						}, nil
+					},
+					GetInfoFunc: func(ctx context.Context) (*lightning.Info, error) {
+						return &lightning.Info{
+							PubKey: pubKey,
+						}, nil
+					},
+				},
+			},
+			args: args{
+				request: CandidatesRequest{
+					PubKey:              lightning.PubKey("A"),
+					MinCapacity:         1,
+					MinChannels:         1,
+					MinDistance:         3,
+					MinNeighborDistance: 2,
+					MinUpdated:          updated.Add(time.Hour * -3),
+					Assume:              []lightning.PubKey{pubKeyF},
+					Limit:               10,
+					Clearnet:            true,
+				},
+			},
+			want: []RelativeNode{
+				{
+					Node: lightning.Node{
+						PubKey:    "D",
+						Alias:     "D",
+						Updated:   updated,
+						Addresses: []string{clearnetAddress},
+					},
+					distance:        3,
+					distantNeigbors: 2,
+					channels:        2,
+					capacity:        2,
+					neighbors:       []lightning.PubKey{pubKeyC, pubKeyE},
 				},
 			},
 			wantErr: false,

@@ -198,7 +198,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 	}
 
 	// BFS node graph to calculate distance from root node
-	var count int64 = 1
+	var distance int64 = 1
 	visited := make(map[lightning.PubKey]bool)
 
 	// handle strange case where root node doesn't exist for some reason...
@@ -216,7 +216,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 		next := make([]lightning.PubKey, 0)
 		for _, n := range neighbors {
 			if !visited[n] {
-				nodes[n].distance = count
+				nodes[n].distance = distance
 				visited[n] = true
 
 				for _, neighbor := range nodes[n].neighbors {
@@ -226,7 +226,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 				}
 			}
 		}
-		count++
+		distance++
 		neighbors = next
 	}
 

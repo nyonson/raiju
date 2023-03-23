@@ -53,7 +53,7 @@ Set channel fees based on the channel's current liquidity.
 
 The idea here is to encourage passive channel re-balancing through fees. If a channel has a too much local liquidity, fees are lowered in order to encourage relatively more outbound transactions. Visa versa for a channel with too little local liquidity.
 
-The strategy for fee amounts is hardcoded (although I might try to add some more in the future) based on the standard fee ppm flag. `fees` follows the [zero-base-fee movement](http://www.rene-pickhardt.de/). I am honestly not sure if this is financially sound, but I appreciate the simpler mental model. 
+The strategy for fee amounts is hardcoded (although I might try to add some more in the future) based on the `-standard-liquidity-fee-ppm` flag. `fees` follows the [zero-base-fee movement](http://www.rene-pickhardt.de/). I am honestly not sure if this is financially sound, but I appreciate the simpler mental model. 
 
 ```
 $ raiju fees -standard-liquidity-fee-ppm 200
