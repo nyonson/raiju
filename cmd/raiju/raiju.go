@@ -18,6 +18,7 @@ import (
 
 	"github.com/nyonson/raiju"
 	"github.com/nyonson/raiju/lightning"
+	"github.com/nyonson/raiju/lnd"
 )
 
 func main() {
@@ -77,7 +78,7 @@ func main() {
 				return err
 			}
 
-			c := lightning.New(services.Client, services.Client, services.Router)
+			c := lnd.New(services.Client, services.Client, services.Router)
 			r := raiju.New(c)
 
 			// using FieldsFunc to handle empty string case correctly
@@ -132,7 +133,7 @@ func main() {
 				return err
 			}
 
-			c := lightning.New(services.Client, services.Client, services.Router)
+			c := lnd.New(services.Client, services.Client, services.Router)
 			r := raiju.New(c)
 
 			// default to standard fee, override with flag
@@ -188,7 +189,7 @@ func main() {
 				return err
 			}
 
-			c := lightning.New(services.Client, services.Client, services.Router)
+			c := lnd.New(services.Client, services.Client, services.Router)
 			r := raiju.New(c)
 
 			fees := raiju.NewLiquidityFees(*standardLiquidityFeePPM)
@@ -235,7 +236,7 @@ func main() {
 				return err
 			}
 
-			c := lightning.New(services.Client, services.Client, services.Router)
+			c := lnd.New(services.Client, services.Client, services.Router)
 			r := raiju.New(c)
 
 			_, err = r.Reaper(ctx)
