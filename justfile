@@ -14,8 +14,8 @@
   go install cmd/raiju/raiju.go
 
 # publish the current commit with a tag
-@publish tag:
-  git tag {{tag}}
+@publish tag message:
+  git tag -a {{tag}} -m "{{message}}"
   git push origin {{tag}}
   podman build -t ghcr.io/nyonson/raiju:{{tag}} -f Containerfile .
   podman push ghcr.io/nyonson/raiju:{{tag}}
