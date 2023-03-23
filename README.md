@@ -29,9 +29,9 @@ All of `raiju`'s commands can be listed with the global help flag, `raiju -h`, a
 
 ## candidates
 
-Find the best nodes to open a channel. `candidates` lists nodes by a few hearistics from best to worst. `candidates` does not open any channels though, that needs to be done out-of-band with a different tool such as `lncli`. `candidates` just lists suggestions and is not intended to be automated (for now...). 
+Find the best nodes to open a channel. `candidates` lists nodes by a few heuristics from best to worst. `candidates` does not open any channels though, that needs to be done out-of-band with a different tool such as `lncli`. `candidates` just lists suggestions and is not intended to be automated (for now...). 
 
-Theoretically these are desirable nodes to open channels to because they are well connected, but far (a.k.a. much fees) away from the current node. The `Distant Neighbors` metric is the number of channels that node has with distant nodes from the root node.
+The current node has distance `0` to itself and distance `1` to the nodes it has channels with. A node with distance `2` is a node who has a channel with a node the current node is connected too, and so on. "Distant Neighbors" are the number of direct connections which a candidate node has with distant nodes from the current node. Theoretically, these most distant nodes with the most distant neighbor connections are the best to connect to for some off the beaten path (vs. just connecting to the biggest node in the network) better routing (a.k.a. lower fees through the current node).  
 
 ```
 $ raiju candidates
