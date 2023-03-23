@@ -17,7 +17,7 @@
 @publish tag:
   git tag {{tag}}
   git push origin {{tag}}
-  podman build -t nyonson/raiju:{{tag}} -f Containerfile .
+  podman build -t ghcr.io/nyonson/raiju:{{tag}} -f Containerfile .
   podman push ghcr.io/nyonson/raiju:{{tag}}
 
 # test all the codes
