@@ -50,6 +50,9 @@ func main() {
 	limit := candidatesFlagSet.Int64("limit", 100, "Number of results")
 	clearnet := candidatesFlagSet.Bool("clearnet", true, "Filter tor-only nodes")
 
+	// Bump up from the default of 30s to 5m since a lot of raiju's commands are long pulls of data
+	rpcTimeout := time.Minute * 5
+
 	candidatesCmd := &ffcli.Command{
 		Name:       "candidates",
 		ShortUsage: "raiju candidates",
@@ -66,6 +69,7 @@ func main() {
 				Network:            lndclient.Network(*network),
 				CustomMacaroonPath: *macPath,
 				TLSPath:            *tlsPath,
+				RPCTimeout:         rpcTimeout,
 			}
 			services, err := lndclient.NewLndServices(cfg)
 
@@ -114,6 +118,7 @@ func main() {
 				Network:            lndclient.Network(*network),
 				CustomMacaroonPath: *macPath,
 				TLSPath:            *tlsPath,
+				RPCTimeout:         rpcTimeout,
 			}
 			services, err := lndclient.NewLndServices(cfg)
 
@@ -170,6 +175,7 @@ func main() {
 				Network:            lndclient.Network(*network),
 				CustomMacaroonPath: *macPath,
 				TLSPath:            *tlsPath,
+				RPCTimeout:         rpcTimeout,
 			}
 			services, err := lndclient.NewLndServices(cfg)
 			if err != nil {
@@ -215,6 +221,7 @@ func main() {
 				Network:            lndclient.Network(*network),
 				CustomMacaroonPath: *macPath,
 				TLSPath:            *tlsPath,
+				RPCTimeout:         rpcTimeout,
 			}
 			services, err := lndclient.NewLndServices(cfg)
 
