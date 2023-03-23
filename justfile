@@ -4,14 +4,21 @@
 
 # generate test boilerplate code including marked interface stubs and test tables for exported functions
 @generate:
-	go install github.com/cweill/gotests/gotests@latest
-	go install github.com/matryer/moq@v0.3.1
-	find . -type f -name "*.go" ! -name "*test.go" -exec gotests -exported -w '{}' \;  
-	go generate ./...
+  go install github.com/cweill/gotests/gotests@latest
+  go install github.com/matryer/moq@v0.3.1
+  find . -type f -name "*.go" ! -name "*test.go" -exec gotests -exported -w '{}' \;  
+  go generate ./...
 
 # install the executable
 @install:
   go install cmd/raiju/raiju.go
+
+# publish the current commit with a tag
+@publish tag:
+  git tag {{tag}}
+  git push origin {{tag}}
+  podman build -t nyonson/raiju:{{tag}} -f Containerfile .
+  podman push ghcr.io/nyonson/raiju:{{tag}}
 
 # test all the codes
 @test:

@@ -167,11 +167,30 @@ Channel ID          Pubkey   Capacity (BTC)
 
 # installation
 
-Raiju requires `go` on the system to be compiled. `go install` creates a `raiju` executable.
+To install from source, Raiju requires `go` on the system. `go install` creates a `raiju` executable.
 
 ```
 $ go install github.com/nyonson/raiju/cmd/raiju@latest
 ```
+
+If a container is preferred, `raiju` images are published at `ghcr.io/nyonson/raiju`. 
+
+```
+docker pull ghcr.io/nyonson/raiju:v0.3.1
+```
+
+A little more configuration is required to pass along settings to the container.
+
+```
+docker run -it \
+  -v /admin.macaroon:/admin.macaroon:ro -v /tls.cert:/tls.cert:ro \
+  ghcr.io/nyonson/raiju:v0.3.1 \
+  -host 192.168.1.187:10009 -mac-path admin.macaroon -tls-path tls.cert
+  candidates
+```
+
+* Ensure the tls certificate and macaroon are mounted in the container, in the above example they are both mounted to the root and then passed in as cli flags.
+* The container may need to be attached to a network depending on your network. 
 
 # configuration
 
