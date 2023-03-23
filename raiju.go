@@ -21,7 +21,7 @@ type lightninger interface {
 	GetInfo(ctx context.Context) (*lightning.Info, error)
 	GetChannel(ctx context.Context, channelID lightning.ChannelID) (lightning.Channel, error)
 	ListChannels(ctx context.Context) (lightning.Channels, error)
-	SendPayment(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubkey string, maxFee lightning.Satoshi) (lightning.Satoshi, error)
+	SendPayment(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.Satoshi) (lightning.Satoshi, error)
 	SetFees(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error
 }
 
@@ -71,7 +71,7 @@ type RelativeNode struct {
 	distantNeigbors int64
 	channels        int64
 	capacity        lightning.Satoshi
-	neighbors       []string
+	neighbors       []lightning.PubKey
 }
 
 // sortDistance sorts nodes by distance, distant neighbors, capacity, and channels
@@ -106,8 +106,8 @@ func (s sortDistance) Len() int {
 
 // CandidatesRequest contains necessary info to perform sorting across the network
 type CandidatesRequest struct {
-	// Pubkey is the key of the root node to perform crawl from
-	Pubkey string
+	// PubKey is the key of the root node to perform crawl from
+	PubKey lightning.PubKey
 	// MinCapcity filters nodes with a minimum satoshi capacity (sum of channels)
 	MinCapacity lightning.Satoshi
 	// MinChannels filters nodes with a minimum number of channels
@@ -119,7 +119,7 @@ type CandidatesRequest struct {
 	// MinUpdated filters nodes which have not been updated since time
 	MinUpdated time.Time
 	// Assume channels to these pubkeys
-	Assume []string
+	Assume []lightning.PubKey
 	// Number of results
 	Limit int64
 	// Filter tor nodes
@@ -129,13 +129,13 @@ type CandidatesRequest struct {
 // Candidates walks the lightning network from a specific node keeping track of distance (hops).
 func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]RelativeNode, error) {
 	// default root node to local if no key supplied
-	if request.Pubkey == "" {
+	if request.PubKey == "" {
 		info, err := r.l.GetInfo(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		request.Pubkey = info.Pubkey
+		request.PubKey = info.PubKey
 	}
 
 	// pull entire network graph from lnd
@@ -149,7 +149,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 	fmt.Fprintf(os.Stderr, "filtering candidates by capacity: %d, channels: %d, distance: %d\n", request.MinCapacity, request.MinChannels, request.MinDistance)
 
 	// initialize nodes map with static info
-	nodes := make(map[string]*RelativeNode, len(channelGraph.Nodes))
+	nodes := make(map[lightning.PubKey]*RelativeNode, len(channelGraph.Nodes))
 
 	for _, n := range channelGraph.Nodes {
 		nodes[n.PubKey] = &RelativeNode{
@@ -162,13 +162,13 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 		if nodes[e.Node1].neighbors != nil {
 			nodes[e.Node1].neighbors = append(nodes[e.Node1].neighbors, e.Node2)
 		} else {
-			nodes[e.Node1].neighbors = []string{e.Node2}
+			nodes[e.Node1].neighbors = []lightning.PubKey{e.Node2}
 		}
 
 		if nodes[e.Node2].neighbors != nil {
 			nodes[e.Node2].neighbors = append(nodes[e.Node2].neighbors, e.Node1)
 		} else {
-			nodes[e.Node2].neighbors = []string{e.Node1}
+			nodes[e.Node2].neighbors = []lightning.PubKey{e.Node1}
 		}
 
 		nodes[e.Node1].capacity += e.Capacity
@@ -184,27 +184,27 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 			return []RelativeNode{}, errors.New("candidate node does not exist")
 		}
 
-		if nodes[request.Pubkey].neighbors != nil {
-			nodes[request.Pubkey].neighbors = append(nodes[request.Pubkey].neighbors, c)
+		if nodes[request.PubKey].neighbors != nil {
+			nodes[request.PubKey].neighbors = append(nodes[request.PubKey].neighbors, c)
 		} else {
-			nodes[request.Pubkey].neighbors = []string{c}
+			nodes[request.PubKey].neighbors = []lightning.PubKey{c}
 		}
 
 		if nodes[c].neighbors != nil {
-			nodes[c].neighbors = append(nodes[c].neighbors, request.Pubkey)
+			nodes[c].neighbors = append(nodes[c].neighbors, request.PubKey)
 		} else {
-			nodes[c].neighbors = []string{request.Pubkey}
+			nodes[c].neighbors = []lightning.PubKey{request.PubKey}
 		}
 	}
 
 	// BFS node graph to calculate distance from root node
 	var count int64 = 1
-	visited := make(map[string]bool)
+	visited := make(map[lightning.PubKey]bool)
 
 	// handle strange case where root node doesn't exist for some reason...
-	neighbors := make([]string, 0)
+	neighbors := make([]lightning.PubKey, 0)
 	// initialize search from root node's neighbors
-	if n, ok := nodes[request.Pubkey]; ok {
+	if n, ok := nodes[request.PubKey]; ok {
 		// root node has no distance to self
 		n.distance = 0
 		// mark root as visited
@@ -213,7 +213,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 	}
 
 	for len(neighbors) > 0 {
-		next := make([]string, 0)
+		next := make([]lightning.PubKey, 0)
 		for _, n := range neighbors {
 			if !visited[n] {
 				nodes[n].distance = count
@@ -307,7 +307,7 @@ func (r Raiju) Fees(ctx context.Context, fees LiquidityFees) error {
 // The amount of sats rebalanced is based on the capacity of the out channel. Each rebalance attempt will try to move
 // stepPercent worth of sats. A maximum of maxPercent of sats will be moved. The maxFee in ppm controls the amount
 // willing to pay for rebalance.
-func (r Raiju) Rebalance(ctx context.Context, outChannelID lightning.ChannelID, lastHopPubkey string, stepPercent float64, maxPercent float64, maxFee lightning.FeePPM) (float64, error) {
+func (r Raiju) Rebalance(ctx context.Context, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, stepPercent float64, maxPercent float64, maxFee lightning.FeePPM) (float64, error) {
 	// calculate invoice value
 	c, err := r.l.GetChannel(ctx, outChannelID)
 	if err != nil {
@@ -320,19 +320,19 @@ func (r Raiju) Rebalance(ctx context.Context, outChannelID lightning.ChannelID, 
 	percentRebalanced := float64(0)
 
 	for percentRebalanced < maxPercent {
-		fmt.Fprintf(os.Stderr, "attempting rebalance %d sats out of %d to %s with a %d max fee...\n", amount, outChannelID, lastHopPubkey, maxFeeSats)
+		fmt.Fprintf(os.Stderr, "attempting rebalance %d sats out of %d to %s with a %d max fee...\n", amount, outChannelID, lastHopPubKey, maxFeeSats)
 		// create and pay invoice
 		invoice, err := r.l.AddInvoice(ctx, lightning.Satoshi(amount))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "rebalance failed\n")
 			return percentRebalanced, nil
 		}
-		feePaidSats, err := r.l.SendPayment(ctx, invoice, outChannelID, lastHopPubkey, lightning.Satoshi(maxFeeSats))
+		feePaidSats, err := r.l.SendPayment(ctx, invoice, outChannelID, lastHopPubKey, lightning.Satoshi(maxFeeSats))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "rebalance failed\n")
 			return percentRebalanced, nil
 		}
-		fmt.Fprintf(os.Stderr, "rebalance success %d sats out of %d to %s for a %d sats fee\n", amount, outChannelID, lastHopPubkey, feePaidSats)
+		fmt.Fprintf(os.Stderr, "rebalance success %d sats out of %d to %s for a %d sats fee\n", amount, outChannelID, lastHopPubKey, feePaidSats)
 		percentRebalanced += stepPercent
 		fmt.Fprintf(os.Stderr, "rebalance has moved %f of %f percent of the channel capacity\n", percentRebalanced, maxPercent)
 	}
@@ -370,7 +370,7 @@ func (r Raiju) RebalanceAll(ctx context.Context, stepPercent float64, maxPercent
 		for _, l := range llcs {
 			// get the non-local node of the channel
 			lastHopPubkey := l.Node1
-			if lastHopPubkey == local.Pubkey {
+			if lastHopPubkey == local.PubKey {
 				lastHopPubkey = l.Node2
 			}
 

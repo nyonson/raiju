@@ -80,17 +80,23 @@ func main() {
 			c := lightning.New(services.Client, services.Client, services.Router)
 			r := raiju.New(c)
 
+			// using FieldsFunc to handle empty string case correctly
+			raw := strings.FieldsFunc(*assume, func(c rune) bool { return c == ',' })
+			assume := make([]lightning.PubKey, len(raw))
+			for i, a := range raw {
+				assume[i] = lightning.PubKey(a)
+			}
+
 			request := raiju.CandidatesRequest{
-				Pubkey:              *pubkey,
+				PubKey:              lightning.PubKey(*pubkey),
 				MinCapacity:         lightning.Satoshi(*minCapacity),
 				MinChannels:         *minChannels,
 				MinDistance:         *minDistance,
 				MinNeighborDistance: *minNeighborDistance,
 				MinUpdated:          time.Now().Add(-2 * 24 * time.Hour),
-				// using FieldsFunc to handle empty string case correctly
-				Assume:   strings.FieldsFunc(*assume, func(c rune) bool { return c == ',' }),
-				Limit:    *limit,
-				Clearnet: *clearnet,
+				Assume:              assume,
+				Limit:               *limit,
+				Clearnet:            *clearnet,
 			}
 
 			_, err = r.Candidates(ctx, request)
@@ -194,7 +200,7 @@ func main() {
 			}
 
 			if *lastHopPubkey != "" {
-				_, err = r.Rebalance(ctx, lightning.ChannelID(*outChannelID), *lastHopPubkey, stepPercent, maxPercent, maxFee)
+				_, err = r.Rebalance(ctx, lightning.ChannelID(*outChannelID), lightning.PubKey(*lastHopPubkey), stepPercent, maxPercent, maxFee)
 			} else {
 				err = r.RebalanceAll(ctx, stepPercent, maxPercent, maxFee)
 			}

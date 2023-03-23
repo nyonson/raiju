@@ -35,6 +35,9 @@ type FeePPM float64
 // Invoice for lightning payment.
 type Invoice string
 
+// PubKey of node.
+type PubKey string
+
 // ChannelID for channel.
 type ChannelID uint64
 
@@ -52,7 +55,7 @@ type Forward struct {
 
 // Node in the Lightning Network.
 type Node struct {
-	PubKey    string
+	PubKey    PubKey
 	Alias     string
 	Updated   time.Time
 	Addresses []string
@@ -76,8 +79,8 @@ func (n Node) Clearnet() bool {
 // Edge between nodes in the Lightning Network.
 type Edge struct {
 	Capacity Satoshi
-	Node1    string
-	Node2    string
+	Node1    PubKey
+	Node2    PubKey
 }
 
 // Graph of nodes and edges of the Lightning Network.
@@ -158,7 +161,7 @@ func (cs Channels) HighLiquidity() Channels {
 
 // Info of a node.
 type Info struct {
-	Pubkey string
+	PubKey PubKey
 }
 
 // channeler is the minimum channel requirements from LND.
@@ -209,7 +212,7 @@ func (l Lightning) GetInfo(ctx context.Context) (*Info, error) {
 	}
 
 	info := Info{
-		Pubkey: hex.EncodeToString(i.IdentityPubkey[:]),
+		PubKey: PubKey(hex.EncodeToString(i.IdentityPubkey[:])),
 	}
 
 	return &info, nil
@@ -227,7 +230,7 @@ func (l Lightning) DescribeGraph(ctx context.Context) (*Graph, error) {
 	nodes := make([]Node, len(g.Nodes))
 	for i, n := range g.Nodes {
 		nodes[i] = Node{
-			PubKey:    n.PubKey.String(),
+			PubKey:    PubKey(n.PubKey.String()),
 			Alias:     n.Alias,
 			Updated:   n.LastUpdate,
 			Addresses: n.Addresses,
@@ -239,8 +242,8 @@ func (l Lightning) DescribeGraph(ctx context.Context) (*Graph, error) {
 	for i, e := range g.Edges {
 		edges[i] = Edge{
 			Capacity: Satoshi(e.Capacity.ToUnit(btcutil.AmountSatoshi)),
-			Node1:    e.Node1.String(),
-			Node2:    e.Node2.String(),
+			Node1:    PubKey(e.Node1.String()),
+			Node2:    PubKey(e.Node2.String()),
 		}
 	}
 
@@ -278,12 +281,12 @@ func (l Lightning) GetChannel(ctx context.Context, channelID ChannelID) (Channel
 	c := Channel{
 		Edge: Edge{
 			Capacity: Satoshi(ce.Capacity.ToUnit(btcutil.AmountSatoshi)),
-			Node1:    ce.Node1.String(),
-			Node2:    ce.Node2.String(),
+			Node1:    PubKey(ce.Node1.String()),
+			Node2:    PubKey(ce.Node2.String()),
 		},
 		ChannelID: ChannelID(ce.ChannelID),
 		RemoteNode: Node{
-			PubKey:    remote.PubKey.String(),
+			PubKey:    PubKey(remote.PubKey.String()),
 			Alias:     remote.Alias,
 			Updated:   remote.LastUpdate,
 			Addresses: remote.Addresses,
@@ -338,14 +341,14 @@ func (l Lightning) ListChannels(ctx context.Context) (Channels, error) {
 		channels[i] = Channel{
 			Edge: Edge{
 				Capacity: Satoshi(ce.Capacity.ToUnit(btcutil.AmountSatoshi)),
-				Node1:    ce.Node1.String(),
-				Node2:    ce.Node2.String(),
+				Node1:    PubKey(ce.Node1.String()),
+				Node2:    PubKey(ce.Node2.String()),
 			},
 			ChannelID:     ChannelID(ci.ChannelID),
 			LocalBalance:  Satoshi(ci.LocalBalance.ToUnit(btcutil.AmountSatoshi)),
 			RemoteBalance: Satoshi(ci.RemoteBalance.ToUnit(btcutil.AmountSatoshi)),
 			RemoteNode: Node{
-				PubKey:    remote.PubKey.String(),
+				PubKey:    PubKey(remote.PubKey.String()),
 				Alias:     remote.Alias,
 				Updated:   remote.LastUpdate,
 				Addresses: remote.Addresses,
@@ -387,8 +390,8 @@ func (l Lightning) AddInvoice(ctx context.Context, amount Satoshi) (Invoice, err
 }
 
 // SendPayment to pay for invoice.
-func (l Lightning) SendPayment(ctx context.Context, invoice Invoice, outChannelID ChannelID, lastHopPubkey string, maxFee Satoshi) (Satoshi, error) {
-	lhpk, err := route.NewVertexFromStr(lastHopPubkey)
+func (l Lightning) SendPayment(ctx context.Context, invoice Invoice, outChannelID ChannelID, lastHopPubKey PubKey, maxFee Satoshi) (Satoshi, error) {
+	lhpk, err := route.NewVertexFromStr(string(lastHopPubKey))
 	if err != nil {
 		return 0, err
 	}
