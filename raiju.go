@@ -2,6 +2,7 @@ package raiju
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -69,7 +70,7 @@ type RelativeNode struct {
 	distance        int64
 	distantNeigbors int64
 	channels        int64
-	capacity        int64
+	capacity        lightning.Satoshi
 	neighbors       []string
 }
 
@@ -108,7 +109,7 @@ type CandidatesRequest struct {
 	// Pubkey is the key of the root node to perform crawl from
 	Pubkey string
 	// MinCapcity filters nodes with a minimum satoshi capacity (sum of channels)
-	MinCapacity int64
+	MinCapacity lightning.Satoshi
 	// MinChannels filters nodes with a minimum number of channels
 	MinChannels int64
 	// MinDistance filters nodes with a minimum distance (number of hops) from the root node
@@ -145,6 +146,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 	}
 
 	fmt.Fprintf(os.Stderr, "network contains %d nodes total\n", len(channelGraph.Nodes))
+	fmt.Fprintf(os.Stderr, "filtering candidates by capacity: %d, channels: %d, distance: %d\n", request.MinCapacity, request.MinChannels, request.MinDistance)
 
 	// initialize nodes map with static info
 	nodes := make(map[string]*RelativeNode, len(channelGraph.Nodes))
@@ -169,8 +171,8 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 			nodes[e.Node2].neighbors = []string{e.Node1}
 		}
 
-		nodes[e.Node1].capacity += int64(e.Capacity)
-		nodes[e.Node2].capacity += int64(e.Capacity)
+		nodes[e.Node1].capacity += e.Capacity
+		nodes[e.Node2].capacity += e.Capacity
 
 		nodes[e.Node1].channels++
 		nodes[e.Node2].channels++
@@ -179,8 +181,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 	// Add assumes to root node
 	for _, c := range request.Assume {
 		if _, ok := nodes[c]; !ok {
-			fmt.Fprintf(os.Stderr, "candidate node does not exist: %s\n", c)
-			continue
+			return []RelativeNode{}, errors.New("candidate node does not exist")
 		}
 
 		if nodes[request.Pubkey].neighbors != nil {
@@ -200,10 +201,14 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 	var count int64 = 1
 	visited := make(map[string]bool)
 
+	// handle strange case where root node doesn't exist for some reason...
 	neighbors := make([]string, 0)
-
-	// handle strange case where node doesn't exist
+	// initialize search from root node's neighbors
 	if n, ok := nodes[request.Pubkey]; ok {
+		// root node has no distance to self
+		n.distance = 0
+		// mark root as visited
+		visited[n.PubKey] = true
 		neighbors = n.neighbors
 	}
 
@@ -231,19 +236,19 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 	}
 
 	// calculate number of distant neighbors per node
-	for i := range unfilteredSpan {
+	for node := range unfilteredSpan {
 		var count int64
-		for _, n := range unfilteredSpan[i].neighbors {
-			if nodes[n].distance > request.MinNeighborDistance {
+		for _, neighbor := range unfilteredSpan[node].neighbors {
+			if nodes[neighbor].distance >= request.MinNeighborDistance {
 				count++
 			}
 		}
 
-		unfilteredSpan[i].distantNeigbors = count
+		unfilteredSpan[node].distantNeigbors = count
 	}
 
 	// filter nodes by request conditions
-	span := make([]RelativeNode, 0)
+	allCandidates := make([]RelativeNode, 0)
 	for _, v := range unfilteredSpan {
 		if v.capacity >= request.MinCapacity &&
 			v.channels >= request.MinChannels &&
@@ -251,21 +256,21 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 			v.Updated.After(request.MinUpdated) {
 			if request.Clearnet {
 				if v.Clearnet() {
-					span = append(span, v)
+					allCandidates = append(allCandidates, v)
 				}
 			} else {
-				span = append(span, v)
+				allCandidates = append(allCandidates, v)
 			}
 		}
 	}
 
-	sort.Sort(sort.Reverse(sortDistance(span)))
+	sort.Sort(sort.Reverse(sortDistance(allCandidates)))
 
-	if int64(len(span)) < request.Limit {
-		return span, nil
+	if int64(len(allCandidates)) < request.Limit {
+		return allCandidates, nil
 	}
 
-	candidates := span[:request.Limit]
+	candidates := allCandidates[:request.Limit]
 
 	printNodes(candidates)
 

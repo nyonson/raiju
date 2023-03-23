@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	pubkey = "111111111112300000000000000000000000000000000000000000000000000000"
-	alias  = "raiju"
+	pubkey          = "111111111112300000000000000000000000000000000000000000000000000000"
+	alias           = "raiju"
+	clearnetAddress = "44.127.188.136:9735"
 )
 
 var (
@@ -54,6 +55,108 @@ func TestRaiju_Candidates(t *testing.T) {
 				request: CandidatesRequest{},
 			},
 			want:    []RelativeNode{},
+			wantErr: false,
+		},
+		{
+			name: "min distance request should filter out close nodes",
+			fields: fields{
+				l: &lightningerMock{
+					DescribeGraphFunc: func(ctx context.Context) (*lightning.Graph, error) {
+						// a linear network (A) <=> (B) <=> (C) <=> (D)
+						return &lightning.Graph{
+							Nodes: []lightning.Node{
+								{
+									PubKey:    "A",
+									Alias:     "A",
+									Updated:   updated,
+									Addresses: []string{clearnetAddress},
+								},
+								{
+									PubKey:    "B",
+									Alias:     "B",
+									Updated:   updated,
+									Addresses: []string{clearnetAddress},
+								},
+								{
+									PubKey:    "C",
+									Alias:     "C",
+									Updated:   updated,
+									Addresses: []string{clearnetAddress},
+								},
+								{
+									PubKey:    "D",
+									Alias:     "D",
+									Updated:   updated,
+									Addresses: []string{clearnetAddress},
+								},
+							},
+							Edges: []lightning.Edge{
+								{
+									Capacity: 1,
+									Node1:    "A",
+									Node2:    "B",
+								},
+								{
+									Capacity: 1,
+									Node1:    "B",
+									Node2:    "C",
+								},
+								{
+									Capacity: 1,
+									Node1:    "C",
+									Node2:    "D",
+								},
+							},
+						}, nil
+					},
+					GetInfoFunc: func(ctx context.Context) (*lightning.Info, error) {
+						return &lightning.Info{
+							Pubkey: pubkey,
+						}, nil
+					},
+				},
+			},
+			args: args{
+				request: CandidatesRequest{
+					Pubkey:              "A",
+					MinCapacity:         1,
+					MinChannels:         1,
+					MinDistance:         2,
+					MinNeighborDistance: 1,
+					MinUpdated:          updated.Add(time.Hour * -3),
+					Assume:              []string{},
+					Limit:               10,
+					Clearnet:            true,
+				},
+			},
+			want: []RelativeNode{
+				{
+					Node: lightning.Node{
+						PubKey:    "D",
+						Alias:     "D",
+						Updated:   updated,
+						Addresses: []string{clearnetAddress},
+					},
+					distance:        3,
+					distantNeigbors: 1,
+					channels:        1,
+					capacity:        1,
+					neighbors:       []string{"C"},
+				},
+				{
+					Node: lightning.Node{
+						PubKey:    "C",
+						Alias:     "C",
+						Updated:   updated,
+						Addresses: []string{clearnetAddress},
+					},
+					distance:        2,
+					distantNeigbors: 2,
+					channels:        2,
+					capacity:        2,
+					neighbors:       []string{"B", "D"},
+				},
+			},
 			wantErr: false,
 		},
 	}

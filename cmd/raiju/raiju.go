@@ -41,11 +41,11 @@ func main() {
 	standardLiquidityFeePPM := rootFlagSet.Float64("standard-liquidity-fee-ppm", 200, "Default fee in PPM for standard liquidity channels which is shared by subcommands")
 
 	candidatesFlagSet := flag.NewFlagSet("candidates", flag.ExitOnError)
-	minCapacity := candidatesFlagSet.Int64("min-capacity", 10000000, "Minimum capacity of a node")
+	minCapacity := candidatesFlagSet.Int64("min-capacity", 1000000, "Minimum capacity of a node in satoshis")
 	minChannels := candidatesFlagSet.Int64("min-channels", 5, "Minimum channels of a node")
 	minDistance := candidatesFlagSet.Int64("min-distance", 2, "Minimum distance of a node")
 	minNeighborDistance := candidatesFlagSet.Int64("min-neighbor-distance", 2, "Minimum distance of a neighbor node")
-	pubkey := candidatesFlagSet.String("pubkey", "", "Node to span out from, defaults to lnd's")
+	pubkey := candidatesFlagSet.String("pubkey", "", "Node to span out from, defaults to the connected node")
 	assume := candidatesFlagSet.String("assume", "", "Comma separated pubkeys to assume channels too")
 	limit := candidatesFlagSet.Int64("limit", 100, "Number of results")
 	clearnet := candidatesFlagSet.Bool("clearnet", true, "Filter tor-only nodes")
@@ -82,7 +82,7 @@ func main() {
 
 			request := raiju.CandidatesRequest{
 				Pubkey:              *pubkey,
-				MinCapacity:         *minCapacity,
+				MinCapacity:         lightning.Satoshi(*minCapacity),
 				MinChannels:         *minChannels,
 				MinDistance:         *minDistance,
 				MinNeighborDistance: *minNeighborDistance,
