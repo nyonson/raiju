@@ -187,7 +187,7 @@ docker run -it \
   candidates
 ```
 
-* Ensure the tls certificate and macaroon are mounted in the container, in the above example they are both mounted to the root and then theirs paths passed in as cli flags.
+* Ensure the tls certificate and macaroon are mounted in the container, in the above example they are both mounted to the root of the container's filesystem and then their paths are passed in as cli flags.
 * The container may need to be attached to a network depending on your network. 
 
 # configuration
