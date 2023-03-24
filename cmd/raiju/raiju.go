@@ -50,7 +50,7 @@ func main() {
 	minCapacity := candidatesFlagSet.Int64("min-capacity", 1000000, "Minimum capacity of a node in satoshis")
 	minChannels := candidatesFlagSet.Int64("min-channels", 1, "Candidate must have at least this many channels")
 	minDistance := candidatesFlagSet.Int64("min-distance", 2, "Candidate must be at least this far away (0 is root node and 1 is direct connection)")
-	minNeighborDistance := candidatesFlagSet.Int64("min-neighbor-distance", 3, "Minimum distance from root node to be considered a valuable neighbor of candidate")
+	minDistantNeighbors := candidatesFlagSet.Int64("min-distant-neighbors", 0, "Candidate must have a minimum number of distant neighbors")
 	pubkey := candidatesFlagSet.String("pubkey", "", "Node to span out from, defaults to the connected node")
 	assume := candidatesFlagSet.String("assume", "", "Comma separated pubkeys to assume channels too")
 	limit := candidatesFlagSet.Int64("limit", 100, "Number of results")
@@ -69,10 +69,6 @@ func main() {
 
 			if *minDistance < 2 {
 				return errors.New("min-distance must be greater than 1")
-			}
-
-			if *minNeighborDistance < 3 {
-				return errors.New("min-neighbor-distance must be greater than 2")
 			}
 
 			cfg := &lndclient.LndServicesConfig{
@@ -103,7 +99,7 @@ func main() {
 				MinCapacity:         lightning.Satoshi(*minCapacity),
 				MinChannels:         *minChannels,
 				MinDistance:         *minDistance,
-				MinNeighborDistance: *minNeighborDistance,
+				MinDistantNeighbors: *minDistantNeighbors,
 				MinUpdated:          time.Now().Add(-2 * 24 * time.Hour),
 				Assume:              assume,
 				Limit:               *limit,

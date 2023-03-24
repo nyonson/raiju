@@ -114,8 +114,8 @@ type CandidatesRequest struct {
 	MinChannels int64
 	// MinDistance filters nodes with a minimum distance (number of hops) from the root node
 	MinDistance int64
-	// MinNeighborDistance is the distance required for a node to be considered a distanct neighbor
-	MinNeighborDistance int64
+	// MinDistantNeighbors filters nodes with a minimum number of distant neighbors
+	MinDistantNeighbors int64
 	// MinUpdated filters nodes which have not been updated since time
 	MinUpdated time.Time
 	// Assume channels to these pubkeys
@@ -146,7 +146,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 	}
 
 	fmt.Fprintf(os.Stderr, "network contains %d nodes total\n", len(channelGraph.Nodes))
-	fmt.Fprintf(os.Stderr, "filtering candidates by capacity: %d, channels: %d, distance: %d\n", request.MinCapacity, request.MinChannels, request.MinDistance)
+	fmt.Fprintf(os.Stderr, "filtering candidates by capacity: %d, channels: %d, distance: %d, distant neighbors: %d\n", request.MinCapacity, request.MinChannels, request.MinDistance, request.MinDistantNeighbors)
 
 	// initialize nodes map with static info
 	nodes := make(map[lightning.PubKey]*RelativeNode, len(channelGraph.Nodes))
@@ -235,11 +235,14 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 		unfilteredSpan = append(unfilteredSpan, *v)
 	}
 
+	// hardcode what distance is considered "distant" for a neighbor
+	const distantNeighborLimit int64 = 2
+
 	// calculate number of distant neighbors per node
 	for node := range unfilteredSpan {
 		var count int64
 		for _, neighbor := range unfilteredSpan[node].neighbors {
-			if nodes[neighbor].distance >= request.MinNeighborDistance {
+			if nodes[neighbor].distance > distantNeighborLimit {
 				count++
 			}
 		}
@@ -253,6 +256,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 		if v.capacity >= request.MinCapacity &&
 			v.channels >= request.MinChannels &&
 			v.distance >= request.MinDistance &&
+			v.distantNeigbors >= request.MinDistantNeighbors &&
 			v.Updated.After(request.MinUpdated) {
 			if request.Clearnet {
 				if v.Clearnet() {
