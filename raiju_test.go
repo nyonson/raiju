@@ -738,8 +738,9 @@ func TestRaiju_Fees(t *testing.T) {
 		l lightninger
 	}
 	type args struct {
-		ctx  context.Context
-		fees LiquidityFees
+		ctx    context.Context
+		fees   LiquidityFees
+		daemon bool
 	}
 	tests := []struct {
 		name    string
@@ -757,7 +758,8 @@ func TestRaiju_Fees(t *testing.T) {
 				},
 			},
 			args: args{
-				fees: LiquidityFees{},
+				fees:   LiquidityFees{},
+				daemon: false,
 			},
 			wantErr: false,
 		},
@@ -767,7 +769,7 @@ func TestRaiju_Fees(t *testing.T) {
 			r := Raiju{
 				l: tt.fields.l,
 			}
-			if err := r.Fees(tt.args.ctx, tt.args.fees); (err != nil) != tt.wantErr {
+			if err := r.Fees(tt.args.ctx, tt.args.fees, tt.args.daemon); (err != nil) != tt.wantErr {
 				t.Errorf("Raiju.Fees() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

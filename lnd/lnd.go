@@ -16,6 +16,7 @@ import (
 	"github.com/lightninglabs/lndclient"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/invoicesrpc"
+	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/routing/route"
@@ -38,6 +39,7 @@ type channeler interface {
 // router is the minimum routing requirements from LND.
 type router interface {
 	SendPayment(ctx context.Context, request lndclient.SendPaymentRequest) (chan lndclient.PaymentStatus, chan error, error)
+	SubscribeHtlcEvents(ctx context.Context) (<-chan *routerrpc.HtlcEvent, <-chan error, error)
 }
 
 // invoicer is the minimum routing requirements from LND.
@@ -277,6 +279,51 @@ func (l Lnd) SendPayment(ctx context.Context, invoice lightning.Invoice, outChan
 			return 0, fmt.Errorf("error paying invoice: %w", e)
 		}
 	}
+}
+
+// SubscribeChannelUpdates signals when a channel's liquidity changes.
+func (l Lnd) SubscribeChannelUpdates(ctx context.Context) (<-chan lightning.Channels, <-chan error, error) {
+	cc := make(chan lightning.Channels)
+	ec := make(chan error)
+
+	htlcs, errors, err := l.r.SubscribeHtlcEvents(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// translate htlc events into channels
+	go func() {
+		for {
+			select {
+			case h := <-htlcs:
+				channels := make(lightning.Channels, 0)
+
+				if h.GetIncomingChannelId() != 0 {
+					c, err := l.GetChannel(ctx, lightning.ChannelID(h.GetIncomingChannelId()))
+					if err != nil {
+						ec <- err
+						break
+					}
+					channels = append(channels, c)
+				}
+
+				if h.GetOutgoingChannelId() != 0 {
+					c, err := l.GetChannel(ctx, lightning.ChannelID(h.GetOutgoingChannelId()))
+					if err != nil {
+						ec <- err
+						break
+					}
+					channels = append(channels, c)
+				}
+
+				cc <- channels
+			case err = <-errors:
+				ec <- err
+			}
+		}
+	}()
+
+	return cc, ec, nil
 }
 
 // ForwardingHistory of node since the time give, capped at 50,000 events.

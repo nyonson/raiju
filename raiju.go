@@ -23,6 +23,7 @@ type lightninger interface {
 	ListChannels(ctx context.Context) (lightning.Channels, error)
 	SendPayment(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.Satoshi) (lightning.Satoshi, error)
 	SetFees(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error
+	SubscribeChannelUpdates(ctx context.Context) (<-chan lightning.Channels, <-chan error, error)
 }
 
 // Raiju app.
@@ -282,23 +283,54 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 }
 
 // Fees to encourage a balanced channel.
-func (r Raiju) Fees(ctx context.Context, fees LiquidityFees) error {
+func (r Raiju) Fees(ctx context.Context, fees LiquidityFees, daemon bool) error {
 	channels, err := r.l.ListChannels(ctx)
 	if err != nil {
 		return err
 	}
 
+	r.setFees(ctx, fees, channels)
+
+	if daemon {
+		cc, ce, err := r.l.SubscribeChannelUpdates(ctx)
+		if err != nil {
+			return err
+		}
+
+		for {
+			select {
+			case channels = <-cc:
+				r.setFees(ctx, fees, channels)
+			case err := <-ce:
+				fmt.Fprintf(os.Stderr, "error listening to channel updates %v\n", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (r Raiju) setFees(ctx context.Context, fees LiquidityFees, channels lightning.Channels) error {
 	for _, c := range channels {
 		switch c.LiquidityLevel() {
 		case lightning.LowLiquidity:
 			fmt.Fprintf(os.Stderr, "channel %d has low liquidity %f setting fee to %f\n", c.ChannelID, c.Liquidity(), fees.Low())
-			r.l.SetFees(ctx, c.ChannelID, fees.Low())
+			err := r.l.SetFees(ctx, c.ChannelID, fees.Low())
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error updating fees %v\n", err)
+			}
 		case lightning.StandardLiquidity:
 			fmt.Fprintf(os.Stderr, "channel %d has standard liquidity %f setting fee to %f\n", c.ChannelID, c.Liquidity(), fees.Standard())
-			r.l.SetFees(ctx, c.ChannelID, fees.Standard())
+			err := r.l.SetFees(ctx, c.ChannelID, fees.Standard())
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error updating fees %v\n", err)
+			}
 		case lightning.HighLiquidity:
 			fmt.Fprintf(os.Stderr, "channel %d has high liquidity %f setting fee to %f\n", c.ChannelID, c.Liquidity(), fees.High())
-			r.l.SetFees(ctx, c.ChannelID, fees.High())
+			err := r.l.SetFees(ctx, c.ChannelID, fees.High())
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error updating fees %v\n", err)
+			}
 		}
 
 	}
@@ -326,7 +358,7 @@ func (r Raiju) Rebalance(ctx context.Context, outChannelID lightning.ChannelID, 
 	var totalFeePaid lightning.Satoshi
 
 	for percentRebalanced < maxPercent {
-		fmt.Fprintf(os.Stderr, "attempting rebalance %d sats out of %d to %s with a %d max fee...\n", amount, outChannelID, lastHopPubKey, maxFeeSats)
+		fmt.Fprintf(os.Stderr, "attempting rebalance %d sats out of %d to %s with a %d sats max fee...\n", amount, outChannelID, lastHopPubKey, maxFeeSats)
 		// create and pay invoice
 		invoice, err := r.l.AddInvoice(ctx, lightning.Satoshi(amount))
 		if err != nil {
@@ -341,7 +373,7 @@ func (r Raiju) Rebalance(ctx context.Context, outChannelID lightning.ChannelID, 
 		fmt.Fprintf(os.Stderr, "rebalance success %d sats out of %d to %s for a %d sats fee\n", amount, outChannelID, lastHopPubKey, feePaid)
 		percentRebalanced += stepPercent
 		totalFeePaid += feePaid
-		fmt.Fprintf(os.Stderr, "rebalance has moved %f of %f percent of the channel capacity\n", percentRebalanced, maxPercent)
+		fmt.Fprintf(os.Stderr, "rebalance has moved %f percent of max %f percent of the channel capacity\n", percentRebalanced, maxPercent)
 	}
 
 	return percentRebalanced, totalFeePaid, nil

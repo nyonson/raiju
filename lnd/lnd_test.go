@@ -330,3 +330,44 @@ func TestLnd_ForwardingHistory(t *testing.T) {
 		})
 	}
 }
+
+func TestLnd_SubscribeChannelUpdates(t *testing.T) {
+	type fields struct {
+		c channeler
+		r router
+		i invoicer
+	}
+	type args struct {
+		ctx context.Context
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    <-chan lightning.Channels
+		want1   <-chan error
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := Lnd{
+				c: tt.fields.c,
+				r: tt.fields.r,
+				i: tt.fields.i,
+			}
+			got, got1, err := l.SubscribeChannelUpdates(tt.args.ctx)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Lnd.SubscribeChannelUpdates() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Lnd.SubscribeChannelUpdates() got = %v, want %v", got, tt.want)
+			}
+			if !reflect.DeepEqual(got1, tt.want1) {
+				t.Errorf("Lnd.SubscribeChannelUpdates() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}

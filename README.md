@@ -27,6 +27,8 @@ All of `raiju`'s commands can be listed with the global help flag, `raiju -h`, a
 
 ## candidates
 
+**Open the most efficient channels**
+
 List the best nodes to open a channel to from the current node. `candidates` does not automatically open any channels, that needs to be done out-of-band with a different tool such as `lncli`. `candidates` just lists suggestions and is not intended to be automated (for now...). 
 
 The current node has distance `0` to itself and distance `1` to the nodes it has channels with. A node with distance `2` has a channel with a node the current node is connected too, but no channel with the current node, and so on. "Distant Neighbors" are nodes a candidate has a channel with who are distant (greater than `2`) from the current node. Theoretically, these most distant nodes with the most distant neighbor connections are the best to open a channel to for some off the beaten path (vs. just connecting to the biggest node in the network) more efficient routing (a.k.a. lower fees through the current node because a lot less hops).  
@@ -47,13 +49,17 @@ By default, only nodes with clearnet addresses are listed. TOR-only nodes tend t
 
 ## fees
 
+**Passively manage channel liquidity**
+
 Set channel fees based on the channel's current liquidity.
 
-The strategy for fee amounts is hardcoded (although I might try to add some more in the future) all fees are derived from the `-standard-liquidity-fee-ppm` flag. Channels are bucketed into three coarse grained groups: *high liquidity*, *standard liquidity*, and *low liquidity*. The idea here is to encourage passive channel re-balancing through fees. If a channel has a too much local liquidity (high), fees are lowered in order to encourage relatively more outbound transactions. Visa versa for a channel with too little local liquidity (low). So `fees` applies the `standard-liquidity-fee-ppm` to standard channels, `standard-liquidity-fee-ppm / 10` to high channels, and `standard-liquidity-fee-ppm * 10` to low channels.
+The strategy for fee amounts is hardcoded (although I might try to add some more in the future) all fees are derived from the `-standard-liquidity-fee-ppm` flag. Channels are bucketed into three coarse grained groups: *high liquidity*, *standard liquidity*, and *low liquidity*. The idea here is to encourage passive channel re-balancing through fees. If a channel has a too much local liquidity (high), fees are lowered in order to encourage relatively more outbound transactions. Visa versa for a channel with too little local liquidity (low). So `fees` applies the `standard-liquidity-fee-ppm` to standard channels, `standard-liquidity-fee-ppm / 10` to high channels, and `standard-liquidity-fee-ppm * 10` to low channels. The following example sets fees based on a `200 ppm` standard fee:
 
 ```
 $ raiju fees -standard-liquidity-fee-ppm 200
 ```
+
+`fees` supports a `-daemon` flag which keeps keeps the process alive listening for channel updates that trigger fee updates (e.g. a channel's liquidity sinks below the low level and needs its fees updated). This is helpful when used with the `rebalance` command which *actively* balances channel liquidity. Without the daemon, there is a worst case scenario of: 1. pay a lot of fees to actively `rebalance` channel's liquidity from low to standard, update the channel's fees to standard, have a large payment immediately cancel out the rebalance and only pay standard fees (instead of higher low ones which would have canceled out the cost of the rebalance).
 
 `fees` follows the [zero-base-fee movement](http://www.rene-pickhardt.de/). I am honestly not sure if this is financially sound, but I appreciate the simpler mental model of only thinking in ppm.
 
@@ -70,27 +76,16 @@ Description=Set fees of LND node
 [Service]
 User=lightning
 Group=lightning
+Restart=always
 Environment=RAIJU_HOST=localhost:10009
 Environment=RAIJU_MAC_PATH=/home/lightning/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
 Environment=RAIJU_TLS_PATH=/home/lightning/.lnd/tls.cert
 Environment=RAIJU_STANDARD_LIQUIDITY_FEE_PPM=200
-ExecStart=/usr/local/bin/raiju fees
+ExecStart=/usr/local/bin/raiju fees -daemon
 ```
-
-Example `fees.timer`:
-
-```
-[Unit]
-Description=Set fees daily at 3am
-
-[Timer]
-OnCalendar=*-*-* 03:00:00
-
-[Install]
-WantedBy=timers.target
-```
-
 ## rebalance
+
+**Actively manage channel liquidity**
 
 Circular rebalance a channel or all channels that aren't doing so hot liquidity-wise.
 
@@ -153,6 +148,8 @@ WantedBy=timers.target
 ```
 
 ## reaper
+
+**Close the least efficient channels**
 
 Lists channels which should be closed and re-allocated. Similar to the `candidates` command, these are just suggestions and no channels are automatically closed. They must be closed out-of-band with another tool like `lncli`. This might be made automated in the future.
 

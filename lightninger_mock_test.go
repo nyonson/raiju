@@ -40,6 +40,9 @@ import (
 //			SetFeesFunc: func(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error {
 //				panic("mock out the SetFees method")
 //			},
+//			SubscribeChannelUpdatesFunc: func(ctx context.Context) (<-chan lightning.Channels, <-chan error, error) {
+//				panic("mock out the SubscribeChannelUpdates method")
+//			},
 //		}
 //
 //		// use mockedlightninger in code that requires lightninger
@@ -70,6 +73,9 @@ type lightningerMock struct {
 
 	// SetFeesFunc mocks the SetFees method.
 	SetFeesFunc func(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error
+
+	// SubscribeChannelUpdatesFunc mocks the SubscribeChannelUpdates method.
+	SubscribeChannelUpdatesFunc func(ctx context.Context) (<-chan lightning.Channels, <-chan error, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -131,15 +137,21 @@ type lightningerMock struct {
 			// Fee is the fee argument value.
 			Fee lightning.FeePPM
 		}
+		// SubscribeChannelUpdates holds details about calls to the SubscribeChannelUpdates method.
+		SubscribeChannelUpdates []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 	}
-	lockAddInvoice        sync.RWMutex
-	lockDescribeGraph     sync.RWMutex
-	lockForwardingHistory sync.RWMutex
-	lockGetChannel        sync.RWMutex
-	lockGetInfo           sync.RWMutex
-	lockListChannels      sync.RWMutex
-	lockSendPayment       sync.RWMutex
-	lockSetFees           sync.RWMutex
+	lockAddInvoice              sync.RWMutex
+	lockDescribeGraph           sync.RWMutex
+	lockForwardingHistory       sync.RWMutex
+	lockGetChannel              sync.RWMutex
+	lockGetInfo                 sync.RWMutex
+	lockListChannels            sync.RWMutex
+	lockSendPayment             sync.RWMutex
+	lockSetFees                 sync.RWMutex
+	lockSubscribeChannelUpdates sync.RWMutex
 }
 
 // AddInvoice calls AddInvoiceFunc.
@@ -462,5 +474,42 @@ func (mock *lightningerMock) SetFeesCalls() []struct {
 	mock.lockSetFees.RLock()
 	calls = mock.calls.SetFees
 	mock.lockSetFees.RUnlock()
+	return calls
+}
+
+// SubscribeChannelUpdates calls SubscribeChannelUpdatesFunc.
+func (mock *lightningerMock) SubscribeChannelUpdates(ctx context.Context) (<-chan lightning.Channels, <-chan error, error) {
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockSubscribeChannelUpdates.Lock()
+	mock.calls.SubscribeChannelUpdates = append(mock.calls.SubscribeChannelUpdates, callInfo)
+	mock.lockSubscribeChannelUpdates.Unlock()
+	if mock.SubscribeChannelUpdatesFunc == nil {
+		var (
+			channelsChOut <-chan lightning.Channels
+			errChOut      <-chan error
+			errOut        error
+		)
+		return channelsChOut, errChOut, errOut
+	}
+	return mock.SubscribeChannelUpdatesFunc(ctx)
+}
+
+// SubscribeChannelUpdatesCalls gets all the calls that were made to SubscribeChannelUpdates.
+// Check the length with:
+//
+//	len(mockedlightninger.SubscribeChannelUpdatesCalls())
+func (mock *lightningerMock) SubscribeChannelUpdatesCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockSubscribeChannelUpdates.RLock()
+	calls = mock.calls.SubscribeChannelUpdates
+	mock.lockSubscribeChannelUpdates.RUnlock()
 	return calls
 }
