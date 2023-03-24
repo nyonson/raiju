@@ -59,7 +59,7 @@ The strategy for fee amounts is hardcoded (although I might try to add some more
 $ raiju fees -standard-liquidity-fee-ppm 200
 ```
 
-`fees` supports a `-daemon` flag which keeps keeps the process alive listening for channel updates that trigger fee updates (e.g. a channel's liquidity sinks below the low level and needs its fees updated). This is helpful when used with the `rebalance` command which *actively* balances channel liquidity. Without the daemon, there is a worst case scenario of: 1. pay a lot of fees to actively `rebalance` channel's liquidity from low to standard, update the channel's fees to standard, have a large payment immediately cancel out the rebalance and only pay standard fees (instead of higher low ones which would have canceled out the cost of the rebalance).
+`fees` supports a `-daemon` flag which keeps keeps the process alive listening for channel updates that trigger fee updates (e.g. a channel's liquidity sinks below the low level and needs its fees updated). This is helpful when used with the `rebalance` command which *actively* balances channel liquidity. Without the daemon, there is a worst case scenario of: 1. pay a lot of fees to actively `rebalance` channel's liquidity from low to standard 2. update the channel's fees to standard 3. have a large payment immediately cancel out the rebalance and it only pays standard fees (instead of higher ones which would have canceled out the cost of the rebalance).
 
 `fees` follows the [zero-base-fee movement](http://www.rene-pickhardt.de/). I am honestly not sure if this is financially sound, but I appreciate the simpler mental model of only thinking in ppm.
 
