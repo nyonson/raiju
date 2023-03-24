@@ -10,9 +10,7 @@
 
 **Your friendly bitcoin lightning network helper.**
 
-`raiju` is a CLI app which sits on top of a lightning node. Currently, `raiju` only supports the [lnd](https://github.com/lightningnetwork/lnd) implementation. 
-
-`raiju` helps automate the channel life-cycle: creation, liquidity management, and closing. The `candidates` command helps open the most efficient new channels. The `fees` and `rebalance` commands automate passive and active liquidity management. And finally, the `reaper` command exposes inefficient channels to close in order to better allocate resources.
+`raiju` is a CLI app which sits on top of a lightning node and brings some smarts to the channel life-cycle: creation, liquidity management, and closing. Currently, `raiju` only supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation. 
 
 - [commands](#commands)
   - [candidates](#candidates)
