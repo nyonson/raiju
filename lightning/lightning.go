@@ -103,8 +103,8 @@ func (c Channel) LiquidityLevel() ChannelLiquidityLevel {
 	// Defining channel liquidity percentage based on (local capacity / total capacity).
 	// When liquidity is low, there is too much inbound.
 	// When liquidity is high, there is too much outbound.
-	const LOW_LIQUIDITY = 20
-	const HIGH_LIQUIDITY = 80
+	const LOW_LIQUIDITY = 25
+	const HIGH_LIQUIDITY = 75
 
 	if c.Liquidity() < LOW_LIQUIDITY {
 		return LowLiquidity
