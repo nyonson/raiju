@@ -71,7 +71,9 @@ Example `fees.service`:
 
 ```
 [Unit]
-Description=Set fees of LND node
+Description=Monitor channel fees of LND node
+Wants=lnd.service
+After=lnd.service
 
 [Service]
 User=lightning
@@ -82,7 +84,11 @@ Environment=RAIJU_MAC_PATH=/home/lightning/.lnd/data/chain/bitcoin/mainnet/admin
 Environment=RAIJU_TLS_PATH=/home/lightning/.lnd/tls.cert
 Environment=RAIJU_STANDARD_LIQUIDITY_FEE_PPM=200
 ExecStart=/usr/local/bin/raiju fees -daemon
+
+[Install]
+WantedBy=multi-user.target
 ```
+
 ## rebalance
 
 **Actively manage channel liquidity**

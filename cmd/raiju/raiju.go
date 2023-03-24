@@ -149,7 +149,9 @@ func main() {
 				standard = *standardLiquidityFeePPMOverride
 			}
 
-			return r.Fees(ctx, raiju.NewLiquidityFees(standard), *daemon)
+			_, err = r.Fees(ctx, raiju.NewLiquidityFees(standard), *daemon)
+
+			return err
 		},
 	}
 

@@ -23,6 +23,8 @@ import (
 	"github.com/nyonson/raiju/lightning"
 )
 
+//go:generate moq -stub -skip-ensure -out lnd_mock_test.go . channeler router invoicer
+
 // channeler is the minimum channel requirements from LND.
 type channeler interface {
 	DescribeGraph(ctx context.Context, includeUnannounced bool) (*lndclient.Graph, error)
@@ -128,9 +130,13 @@ func (l Lnd) GetChannel(ctx context.Context, channelID lightning.ChannelID) (lig
 		return lightning.Channel{}, err
 	}
 
+	// figure out if which node is local and which is remote
 	remotePubkey := ce.Node1
+	// FeeRateMilliMsat is a weird name
+	localFee := lightning.FeePPM(ce.Node2Policy.FeeRateMilliMsat)
 	if local.IdentityPubkey == remotePubkey {
 		remotePubkey = ce.Node2
+		localFee = lightning.FeePPM(ce.Node1Policy.FeeRateMilliMsat)
 	}
 
 	remote, err := l.c.GetNodeInfo(ctx, remotePubkey, false)
@@ -145,6 +151,7 @@ func (l Lnd) GetChannel(ctx context.Context, channelID lightning.ChannelID) (lig
 			Node2:    lightning.PubKey(ce.Node2.String()),
 		},
 		ChannelID: lightning.ChannelID(ce.ChannelID),
+		LocalFee:  localFee,
 		RemoteNode: lightning.Node{
 			PubKey:    lightning.PubKey(remote.PubKey.String()),
 			Alias:     remote.Alias,
@@ -188,9 +195,12 @@ func (l Lnd) ListChannels(ctx context.Context) (lightning.Channels, error) {
 			return nil, err
 		}
 
+		// figure out if which node is local and which is remote
 		remotePubkey := ce.Node1
+		localFee := lightning.FeePPM(ce.Node2Policy.FeeRateMilliMsat)
 		if local.IdentityPubkey == remotePubkey {
 			remotePubkey = ce.Node2
+			localFee = lightning.FeePPM(ce.Node1Policy.FeeRateMilliMsat)
 		}
 
 		remote, err := l.c.GetNodeInfo(ctx, remotePubkey, false)
@@ -206,6 +216,7 @@ func (l Lnd) ListChannels(ctx context.Context) (lightning.Channels, error) {
 			},
 			ChannelID:     lightning.ChannelID(ci.ChannelID),
 			LocalBalance:  lightning.Satoshi(ci.LocalBalance.ToUnit(btcutil.AmountSatoshi)),
+			LocalFee:      localFee,
 			RemoteBalance: lightning.Satoshi(ci.RemoteBalance.ToUnit(btcutil.AmountSatoshi)),
 			RemoteNode: lightning.Node{
 				PubKey:    lightning.PubKey(remote.PubKey.String()),

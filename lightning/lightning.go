@@ -89,6 +89,7 @@ type Channel struct {
 	Edge
 	ChannelID     ChannelID
 	LocalBalance  Satoshi
+	LocalFee      FeePPM
 	RemoteBalance Satoshi
 	RemoteNode    Node
 }

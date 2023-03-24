@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lightninglabs/lndclient"
 	"github.com/nyonson/raiju/lightning"
 )
 
@@ -21,7 +22,19 @@ func TestNew(t *testing.T) {
 		args args
 		want Lnd
 	}{
-		// TODO: Add test cases.
+		{
+			name: "happy init",
+			args: args{
+				c: nil,
+				i: nil,
+				r: nil,
+			},
+			want: Lnd{
+				c: nil,
+				r: nil,
+				i: nil,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -33,6 +46,8 @@ func TestNew(t *testing.T) {
 }
 
 func TestLnd_GetInfo(t *testing.T) {
+	var pubKey [33]byte
+
 	type fields struct {
 		c channeler
 		r router
@@ -48,7 +63,25 @@ func TestLnd_GetInfo(t *testing.T) {
 		want    *lightning.Info
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "happy get info",
+			fields: fields{
+				c: &channelerMock{
+					GetInfoFunc: func(ctx context.Context) (*lndclient.Info, error) {
+						return &lndclient.Info{
+							IdentityPubkey: pubKey,
+						}, nil
+					},
+				},
+				r: &routerMock{},
+				i: &invoicerMock{},
+			},
+			args: args{},
+			want: &lightning.Info{
+				PubKey: "000000000000000000000000000000000000000000000000000000000000000000",
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

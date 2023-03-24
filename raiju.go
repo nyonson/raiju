@@ -13,7 +13,8 @@ import (
 	"github.com/nyonson/raiju/lightning"
 )
 
-//go:generate moq -stub -skip-ensure -out lightninger_mock_test.go . lightninger
+//go:generate moq -stub -skip-ensure -out raiju_mock_test.go . lightninger
+
 type lightninger interface {
 	AddInvoice(ctx context.Context, amount lightning.Satoshi) (lightning.Invoice, error)
 	DescribeGraph(ctx context.Context) (*lightning.Graph, error)
@@ -283,59 +284,81 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 }
 
 // Fees to encourage a balanced channel.
-func (r Raiju) Fees(ctx context.Context, fees LiquidityFees, daemon bool) error {
+//
+// Daemon mode continuously updates policies as channel liquidity changes.
+func (r Raiju) Fees(ctx context.Context, fees LiquidityFees, daemon bool) (map[lightning.ChannelID]lightning.ChannelLiquidityLevel, error) {
 	channels, err := r.l.ListChannels(ctx)
 	if err != nil {
-		return err
+		return map[lightning.ChannelID]lightning.ChannelLiquidityLevel{}, err
 	}
 
-	r.setFees(ctx, fees, channels)
+	c, err := r.setFees(ctx, fees, channels)
+	if err != nil {
+		return map[lightning.ChannelID]lightning.ChannelLiquidityLevel{}, err
+	}
 
 	if daemon {
 		cc, ce, err := r.l.SubscribeChannelUpdates(ctx)
 		if err != nil {
-			return err
+			return map[lightning.ChannelID]lightning.ChannelLiquidityLevel{}, err
 		}
 
 		for {
 			select {
 			case channels = <-cc:
-				r.setFees(ctx, fees, channels)
+				_, err = r.setFees(ctx, fees, channels)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error setting fees %v\n", err)
+				}
 			case err := <-ce:
 				fmt.Fprintf(os.Stderr, "error listening to channel updates %v\n", err)
 			}
 		}
 	}
 
-	return nil
+	return c, nil
 }
 
-func (r Raiju) setFees(ctx context.Context, fees LiquidityFees, channels lightning.Channels) error {
+// setFees on channels who's liquidity has changed, return updated channels and their new liquidity level.
+func (r Raiju) setFees(ctx context.Context, fees LiquidityFees, channels lightning.Channels) (map[lightning.ChannelID]lightning.ChannelLiquidityLevel, error) {
+	updates := make(map[lightning.ChannelID]lightning.ChannelLiquidityLevel)
+	// update channel fees based on liquidity, but only change if necessary
 	for _, c := range channels {
 		switch c.LiquidityLevel() {
 		case lightning.LowLiquidity:
-			fmt.Fprintf(os.Stderr, "channel %d has low liquidity %f setting fee to %f\n", c.ChannelID, c.Liquidity(), fees.Low())
-			err := r.l.SetFees(ctx, c.ChannelID, fees.Low())
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error updating fees %v\n", err)
+			if c.LocalFee != fees.Low() {
+				fmt.Fprintf(os.Stderr, "channel %d now has low liquidity %f, setting fee to %f\n", c.ChannelID, c.Liquidity(), fees.Low())
+				err := r.l.SetFees(ctx, c.ChannelID, fees.Low())
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error updating fees %v\n", err)
+				} else {
+					updates[c.ChannelID] = lightning.LowLiquidity
+				}
 			}
 		case lightning.StandardLiquidity:
-			fmt.Fprintf(os.Stderr, "channel %d has standard liquidity %f setting fee to %f\n", c.ChannelID, c.Liquidity(), fees.Standard())
-			err := r.l.SetFees(ctx, c.ChannelID, fees.Standard())
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error updating fees %v\n", err)
+			if c.LocalFee != fees.Standard() {
+				fmt.Fprintf(os.Stderr, "channel %d now has standard liquidity %f, setting fee to %f\n", c.ChannelID, c.Liquidity(), fees.Standard())
+				err := r.l.SetFees(ctx, c.ChannelID, fees.Standard())
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error updating fees %v\n", err)
+				} else {
+					updates[c.ChannelID] = lightning.StandardLiquidity
+				}
 			}
 		case lightning.HighLiquidity:
-			fmt.Fprintf(os.Stderr, "channel %d has high liquidity %f setting fee to %f\n", c.ChannelID, c.Liquidity(), fees.High())
-			err := r.l.SetFees(ctx, c.ChannelID, fees.High())
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error updating fees %v\n", err)
+			if c.LocalFee != fees.High() {
+				fmt.Fprintf(os.Stderr, "channel %d now has high liquidity %f, setting fee to %f\n", c.ChannelID, c.Liquidity(), fees.High())
+				err := r.l.SetFees(ctx, c.ChannelID, fees.High())
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error updating fees %v\n", err)
+				} else {
+					updates[c.ChannelID] = lightning.HighLiquidity
+				}
 			}
 		}
-
 	}
 
-	return nil
+	return updates, nil
 }
 
 // Rebalance liquidity out of outChannelID and in through lastHopPubkey and returns the percent of capacity rebalanced.

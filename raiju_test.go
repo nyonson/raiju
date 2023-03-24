@@ -733,49 +733,6 @@ func Test_sortDistance_Len(t *testing.T) {
 	}
 }
 
-func TestRaiju_Fees(t *testing.T) {
-	type fields struct {
-		l lightninger
-	}
-	type args struct {
-		ctx    context.Context
-		fees   LiquidityFees
-		daemon bool
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "happy fees",
-			fields: fields{
-				l: &lightningerMock{
-					SetFeesFunc: func(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error {
-						return nil
-					},
-				},
-			},
-			args: args{
-				fees:   LiquidityFees{},
-				daemon: false,
-			},
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := Raiju{
-				l: tt.fields.l,
-			}
-			if err := r.Fees(tt.args.ctx, tt.args.fees, tt.args.daemon); (err != nil) != tt.wantErr {
-				t.Errorf("Raiju.Fees() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
 func TestRaiju_Reaper(t *testing.T) {
 	type fields struct {
 		l lightninger
@@ -1023,6 +980,98 @@ func TestRaiju_Rebalance(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got1, tt.want1) {
 				t.Errorf("Raiju.Rebalance() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}
+
+func TestRaiju_Fees(t *testing.T) {
+	type fields struct {
+		l lightninger
+	}
+	type args struct {
+		ctx    context.Context
+		fees   LiquidityFees
+		daemon bool
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    map[lightning.ChannelID]lightning.ChannelLiquidityLevel
+		wantErr bool
+	}{
+		{
+			name: "update channel fees when necessary",
+			fields: fields{
+				l: &lightningerMock{
+					ListChannelsFunc: func(ctx context.Context) (lightning.Channels, error) {
+						return lightning.Channels{
+							{
+								Edge: lightning.Edge{
+									Capacity: 10,
+									Node1:    pubKeyA,
+									Node2:    pubKeyB,
+								},
+								ChannelID:     1,
+								LocalBalance:  1,
+								LocalFee:      10,
+								RemoteBalance: 9,
+								RemoteNode: lightning.Node{
+									PubKey:    pubKeyB,
+									Alias:     "B",
+									Updated:   updated,
+									Addresses: []string{clearnetAddress},
+								},
+							},
+							{
+								Edge: lightning.Edge{
+									Capacity: 10,
+									Node1:    pubKeyA,
+									Node2:    pubKeyC,
+								},
+								ChannelID:     2,
+								LocalBalance:  5,
+								LocalFee:      10,
+								RemoteBalance: 5,
+								RemoteNode: lightning.Node{
+									PubKey:    pubKeyC,
+									Alias:     "C",
+									Updated:   updated,
+									Addresses: []string{clearnetAddress},
+								},
+							},
+						}, nil
+					},
+					SetFeesFunc: func(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error {
+						return nil
+					},
+				},
+			},
+			args: args{
+				fees: LiquidityFees{
+					standard: 10,
+				},
+				daemon: false,
+			},
+			want: map[lightning.ChannelID]lightning.ChannelLiquidityLevel{
+				lightning.ChannelID(1): lightning.LowLiquidity,
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := Raiju{
+				l: tt.fields.l,
+			}
+			got, err := r.Fees(tt.args.ctx, tt.args.fees, tt.args.daemon)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Raiju.Fees() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Raiju.Fees() = %v, want %v", got, tt.want)
 			}
 		})
 	}
