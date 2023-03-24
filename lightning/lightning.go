@@ -84,6 +84,14 @@ const (
 	HighLiquidity     ChannelLiquidityLevel = "high"
 )
 
+// Defining channel liquidity percentage based on (local capacity / total capacity).
+// When liquidity is low, there is too much inbound.
+// When liquidity is high, there is too much outbound.
+const (
+	lowLiquidityThreshold  = 25
+	highLiquidityThreshold = 75
+)
+
 // Channel between local and remote node.
 type Channel struct {
 	Edge
@@ -101,15 +109,21 @@ func (c Channel) Liquidity() float64 {
 
 // LiquidityLevel of the channel.
 func (c Channel) LiquidityLevel() ChannelLiquidityLevel {
-	// Defining channel liquidity percentage based on (local capacity / total capacity).
-	// When liquidity is low, there is too much inbound.
-	// When liquidity is high, there is too much outbound.
-	const LOW_LIQUIDITY = 25
-	const HIGH_LIQUIDITY = 75
-
-	if c.Liquidity() < LOW_LIQUIDITY {
+	if c.Liquidity() < lowLiquidityThreshold {
 		return LowLiquidity
-	} else if c.Liquidity() > HIGH_LIQUIDITY {
+	} else if c.Liquidity() > highLiquidityThreshold {
+		return HighLiquidity
+	}
+
+	return StandardLiquidity
+}
+
+func (c Channel) PotentialLiquidityLevel(additional Satoshi) ChannelLiquidityLevel {
+	potentialLiquidity := float64(c.LocalBalance+additional) / float64(c.Capacity) * 100
+
+	if potentialLiquidity < lowLiquidityThreshold {
+		return LowLiquidity
+	} else if potentialLiquidity > highLiquidityThreshold {
 		return HighLiquidity
 	}
 

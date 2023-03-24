@@ -34,7 +34,7 @@ import (
 //			ListChannelsFunc: func(ctx context.Context) (lightning.Channels, error) {
 //				panic("mock out the ListChannels method")
 //			},
-//			SendPaymentFunc: func(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.Satoshi) (lightning.Satoshi, error) {
+//			SendPaymentFunc: func(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.FeePPM) (lightning.Satoshi, error) {
 //				panic("mock out the SendPayment method")
 //			},
 //			SetFeesFunc: func(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error {
@@ -69,7 +69,7 @@ type lightningerMock struct {
 	ListChannelsFunc func(ctx context.Context) (lightning.Channels, error)
 
 	// SendPaymentFunc mocks the SendPayment method.
-	SendPaymentFunc func(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.Satoshi) (lightning.Satoshi, error)
+	SendPaymentFunc func(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.FeePPM) (lightning.Satoshi, error)
 
 	// SetFeesFunc mocks the SetFees method.
 	SetFeesFunc func(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error
@@ -126,7 +126,7 @@ type lightningerMock struct {
 			// LastHopPubKey is the lastHopPubKey argument value.
 			LastHopPubKey lightning.PubKey
 			// MaxFee is the maxFee argument value.
-			MaxFee lightning.Satoshi
+			MaxFee lightning.FeePPM
 		}
 		// SetFees holds details about calls to the SetFees method.
 		SetFees []struct {
@@ -383,13 +383,13 @@ func (mock *lightningerMock) ListChannelsCalls() []struct {
 }
 
 // SendPayment calls SendPaymentFunc.
-func (mock *lightningerMock) SendPayment(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.Satoshi) (lightning.Satoshi, error) {
+func (mock *lightningerMock) SendPayment(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.FeePPM) (lightning.Satoshi, error) {
 	callInfo := struct {
 		Ctx           context.Context
 		Invoice       lightning.Invoice
 		OutChannelID  lightning.ChannelID
 		LastHopPubKey lightning.PubKey
-		MaxFee        lightning.Satoshi
+		MaxFee        lightning.FeePPM
 	}{
 		Ctx:           ctx,
 		Invoice:       invoice,
@@ -419,14 +419,14 @@ func (mock *lightningerMock) SendPaymentCalls() []struct {
 	Invoice       lightning.Invoice
 	OutChannelID  lightning.ChannelID
 	LastHopPubKey lightning.PubKey
-	MaxFee        lightning.Satoshi
+	MaxFee        lightning.FeePPM
 } {
 	var calls []struct {
 		Ctx           context.Context
 		Invoice       lightning.Invoice
 		OutChannelID  lightning.ChannelID
 		LastHopPubKey lightning.PubKey
-		MaxFee        lightning.Satoshi
+		MaxFee        lightning.FeePPM
 	}
 	mock.lockSendPayment.RLock()
 	calls = mock.calls.SendPayment

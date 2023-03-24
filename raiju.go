@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"math/rand"
 	"os"
 	"sort"
@@ -22,7 +21,7 @@ type lightninger interface {
 	GetInfo(ctx context.Context) (*lightning.Info, error)
 	GetChannel(ctx context.Context, channelID lightning.ChannelID) (lightning.Channel, error)
 	ListChannels(ctx context.Context) (lightning.Channels, error)
-	SendPayment(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.Satoshi) (lightning.Satoshi, error)
+	SendPayment(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.FeePPM) (lightning.Satoshi, error)
 	SetFees(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error
 	SubscribeChannelUpdates(ctx context.Context) (<-chan lightning.Channels, <-chan error, error)
 }
@@ -374,26 +373,24 @@ func (r Raiju) Rebalance(ctx context.Context, outChannelID lightning.ChannelID, 
 	}
 
 	amount := int64(float64(c.Capacity) * stepPercent / 100)
-	// add 0.5 so rounds up to at least 1
-	maxFeeSats := int64(math.Round(maxFee.Rate()*float64(amount) + 0.5))
 
 	var percentRebalanced float64
 	var totalFeePaid lightning.Satoshi
 
 	for percentRebalanced < maxPercent {
-		fmt.Fprintf(os.Stderr, "attempting rebalance %d sats out of %d to %s with a %d sats max fee...\n", amount, outChannelID, lastHopPubKey, maxFeeSats)
+		fmt.Fprintf(os.Stderr, "attempting rebalance %d sats out of %s (%d) to %s with a %g max fee ppm...\n", amount, c.RemoteNode.Alias, outChannelID, lastHopPubKey, maxFee)
 		// create and pay invoice
 		invoice, err := r.l.AddInvoice(ctx, lightning.Satoshi(amount))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "rebalance failed\n")
 			return percentRebalanced, totalFeePaid, nil
 		}
-		feePaid, err := r.l.SendPayment(ctx, invoice, outChannelID, lastHopPubKey, lightning.Satoshi(maxFeeSats))
+		feePaid, err := r.l.SendPayment(ctx, invoice, outChannelID, lastHopPubKey, maxFee)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "rebalance failed\n")
 			return percentRebalanced, totalFeePaid, nil
 		}
-		fmt.Fprintf(os.Stderr, "rebalance success %d sats out of %d to %s for a %d sats fee\n", amount, outChannelID, lastHopPubKey, feePaid)
+		fmt.Fprintf(os.Stderr, "rebalance success %d sats out of %s (%d) to %s for a %d sats fee\n", amount, c.RemoteNode.Alias, outChannelID, lastHopPubKey, feePaid)
 		percentRebalanced += stepPercent
 		totalFeePaid += feePaid
 		fmt.Fprintf(os.Stderr, "rebalance has moved %f percent of max %f percent of the channel capacity\n", percentRebalanced, maxPercent)
@@ -440,18 +437,20 @@ func (r Raiju) RebalanceAll(ctx context.Context, stepPercent float64, maxPercent
 				lastHopPubkey = l.Node2
 			}
 
-			// Check that the channel is still low on liquidity since rebalancing started
+			// Check that the channel would still be low liquidity to avoid the risk of paying a high fee
+			// to rebalance and then a standard payment cancels out the liquidity
 			ul, err := r.l.GetChannel(ctx, l.ChannelID)
 			if err != nil {
 				return err
 			}
-			if ul.LiquidityLevel() == lightning.LowLiquidity {
+			potentialLocal := lightning.Satoshi(float64(h.Capacity) * maxPercent)
+			if ul.PotentialLiquidityLevel(potentialLocal) == lightning.LowLiquidity {
 				// don't really care if error or not, just continue on
 				p, f, _ := r.Rebalance(ctx, h.ChannelID, lastHopPubkey, stepPercent, (maxPercent - percentRebalanced), maxFee)
 				percentRebalanced += p
 				totalFeePaid += f
 			} else {
-				fmt.Fprintf(os.Stderr, "channel %d with %s no longer has low liquidity\n", ul.ChannelID, ul.RemoteNode.Alias)
+				fmt.Fprintf(os.Stderr, "channel %d with %s would no longer have low liquidity, skipping\n", ul.ChannelID, ul.RemoteNode.Alias)
 			}
 		}
 		fmt.Fprintf(os.Stderr, "rebalanced %f percent of channel %d with %s\n", percentRebalanced, h.ChannelID, h.RemoteNode.Alias)

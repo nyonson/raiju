@@ -887,7 +887,7 @@ func TestRaiju_RebalanceAll(t *testing.T) {
 					ListChannelsFunc: func(ctx context.Context) (lightning.Channels, error) {
 						return lightning.Channels{}, nil
 					},
-					SendPaymentFunc: func(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.Satoshi) (lightning.Satoshi, error) {
+					SendPaymentFunc: func(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.FeePPM) (lightning.Satoshi, error) {
 						return 0, nil
 					},
 				},
@@ -948,7 +948,7 @@ func TestRaiju_Rebalance(t *testing.T) {
 							RemoteNode:    lightning.Node{},
 						}, nil
 					},
-					SendPaymentFunc: func(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.Satoshi) (lightning.Satoshi, error) {
+					SendPaymentFunc: func(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.FeePPM) (lightning.Satoshi, error) {
 						return 1, nil
 					},
 				},

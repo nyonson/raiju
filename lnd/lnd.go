@@ -20,6 +20,7 @@ import (
 	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/routing/route"
+	"github.com/lightningnetwork/lnd/zpay32"
 	"github.com/nyonson/raiju/lightning"
 )
 
@@ -50,19 +51,21 @@ type invoicer interface {
 }
 
 // New Lightning instance.
-func New(c channeler, i invoicer, r router) Lnd {
+func New(c channeler, i invoicer, r router, network string) Lnd {
 	return Lnd{
-		c: c,
-		i: i,
-		r: r,
+		c:       c,
+		i:       i,
+		r:       r,
+		network: network,
 	}
 }
 
 // Lnd client backed by LND node.
 type Lnd struct {
-	c channeler
-	r router
-	i invoicer
+	c       channeler
+	r       router
+	i       invoicer
+	network string
 }
 
 // GetInfo of local node.
@@ -261,15 +264,26 @@ func (l Lnd) AddInvoice(ctx context.Context, amount lightning.Satoshi) (lightnin
 }
 
 // SendPayment to pay for invoice.
-func (l Lnd) SendPayment(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.Satoshi) (lightning.Satoshi, error) {
+func (l Lnd) SendPayment(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.FeePPM) (lightning.Satoshi, error) {
 	lhpk, err := route.NewVertexFromStr(string(lastHopPubKey))
 	if err != nil {
 		return 0, err
 	}
 
+	// decode invoice to get amount in millisats and calculate max fee from ppm
+	params, err := lndclient.Network(l.network).ChainParams()
+	if err != nil {
+		return 0, err
+	}
+	i, err := zpay32.Decode(string(invoice), params)
+	if err != nil {
+		return 0, err
+	}
+	maxFeeMsat := uint64(float64(*i.MilliSat) * maxFee.Rate())
+
 	request := lndclient.SendPaymentRequest{
 		Invoice:          string(invoice),
-		MaxFee:           btcutil.Amount(maxFee),
+		MaxFeeMsat:       lnwire.MilliSatoshi(maxFeeMsat),
 		OutgoingChanIds:  []uint64{uint64(outChannelID)},
 		LastHopPubkey:    &lhpk,
 		AllowSelfPayment: true,
