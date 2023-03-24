@@ -421,9 +421,6 @@ func (r Raiju) RebalanceAll(ctx context.Context, stepPercent float64, maxPercent
 	rand.Shuffle(len(hlcs), func(i, j int) {
 		hlcs[i], hlcs[j] = hlcs[j], hlcs[i]
 	})
-	rand.Shuffle(len(llcs), func(i, j int) {
-		llcs[i], llcs[j] = llcs[j], llcs[i]
-	})
 
 	var totalFeePaid lightning.Satoshi
 
@@ -431,6 +428,11 @@ func (r Raiju) RebalanceAll(ctx context.Context, stepPercent float64, maxPercent
 	for _, h := range hlcs {
 		fmt.Fprintf(os.Stderr, "channel %d with %s has high liquidity, attempting to rebalancing into low liquidity channels\n", h.ChannelID, h.RemoteNode.Alias)
 		percentRebalanced := float64(0)
+
+		// reshuffle low liquidity channels each time
+		rand.Shuffle(len(llcs), func(i, j int) {
+			llcs[i], llcs[j] = llcs[j], llcs[i]
+		})
 		for _, l := range llcs {
 			// get the non-local node of the channel
 			lastHopPubkey := l.Node1
