@@ -49,13 +49,13 @@ By default, only nodes with clearnet addresses are listed. TOR-only nodes tend t
 
 Set channel fees based on the channel's current liquidity.
 
-The idea here is to encourage passive channel re-balancing through fees. If a channel has a too much local liquidity, fees are lowered in order to encourage relatively more outbound transactions. Visa versa for a channel with too little local liquidity.
-
-The strategy for fee amounts is hardcoded (although I might try to add some more in the future) based on the `-standard-liquidity-fee-ppm` flag. `fees` follows the [zero-base-fee movement](http://www.rene-pickhardt.de/). I am honestly not sure if this is financially sound, but I appreciate the simpler mental model. 
+The strategy for fee amounts is hardcoded (although I might try to add some more in the future) all fees are derived from the `-standard-liquidity-fee-ppm` flag. Channels are bucketed into three coarse grained groups: *high liquidity*, *standard liquidity*, and *low liquidity*. The idea here is to encourage passive channel re-balancing through fees. If a channel has a too much local liquidity (high), fees are lowered in order to encourage relatively more outbound transactions. Visa versa for a channel with too little local liquidity (low). So `fees` applies the `standard-liquidity-fee-ppm` to standard channels, `standard-liquidity-fee-ppm / 10` to high channels, and `standard-liquidity-fee-ppm * 10` to low channels.
 
 ```
 $ raiju fees -standard-liquidity-fee-ppm 200
 ```
+
+`fees` follows the [zero-base-fee movement](http://www.rene-pickhardt.de/). I am honestly not sure if this is financially sound, but I appreciate the simpler mental model of only thinking in ppm.
 
 ### systemd automation
 
@@ -94,7 +94,9 @@ WantedBy=timers.target
 
 Circular rebalance a channel or all channels that aren't doing so hot liquidity-wise.
 
-Where the `fees` command attempts to balance channels passively, this is an *active* approach where liquidity is manually pushed. The cost of active rebalancing are the lightning payment fees. While this command could be used to push large amounts of liquidity, the default settings are intended to just prod things in the right direction. The maximum fee ppm setting uses the low liquidity fee setting by default, which theoretically, means that even if a rebalance is instantly canceled out by a large payment at least fees are re-coup'd.   
+Where the `fees` command attempts to balance channels passively, this is an *active* approach where liquidity is manually pushed. The cost of active rebalancing are the lightning payment fees. While this command could be used to push large amounts of liquidity, the default settings are intended to just prod things in the right direction. 
+
+The maximum fee ppm setting defaults to the low liquidity fee setting used by the `fees` command. Theoretically, this means that even if a rebalance is instantly canceled out by a large payment at least fees are re-coup'd.
 
 The command takes two arguments:
 1. A percentage of the channel capacity to attempt to rebalance per circular payment (the "step").
