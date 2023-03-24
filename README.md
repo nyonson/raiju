@@ -65,8 +65,6 @@ $ raiju fees -standard-liquidity-fee-ppm 200
 
 ### systemd automation
 
-Automatically update fees weekly with a systemd service and timer.
-
 Example `fees.service`:
 
 ```
