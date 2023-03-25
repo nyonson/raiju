@@ -113,7 +113,6 @@ func main() {
 	}
 
 	feesFlagSet := flag.NewFlagSet("fees", flag.ExitOnError)
-	standardLiquidityFeePPMOverride := feesFlagSet.Float64("standard-liquidity-fee-ppm", 0, "Override the default standard liquidity fee ppm")
 	daemon := feesFlagSet.Bool("daemon", false, "Run daemon which monitors channel liquidities and immediately updates fees when thresholds are crossed")
 
 	feesCmd := &ffcli.Command{
@@ -143,13 +142,7 @@ func main() {
 			c := lnd.New(services.Client, services.Client, services.Router, *network)
 			r := raiju.New(c)
 
-			// default to standard fee, override with flag
-			standard := *standardLiquidityFeePPM
-			if *standardLiquidityFeePPMOverride != 0 {
-				standard = *standardLiquidityFeePPMOverride
-			}
-
-			_, err = r.Fees(ctx, raiju.NewLiquidityFees(standard), *daemon)
+			_, err = r.Fees(ctx, raiju.NewLiquidityFees(*standardLiquidityFeePPM), *daemon)
 
 			return err
 		},
