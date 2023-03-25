@@ -326,7 +326,7 @@ func (r Raiju) setFees(ctx context.Context, fees LiquidityFees, channels lightni
 		switch c.LiquidityLevel() {
 		case lightning.LowLiquidity:
 			if c.LocalFee != fees.Low() {
-				fmt.Fprintf(os.Stderr, "channel %d now has low liquidity %f, setting fee to %f\n", c.ChannelID, c.Liquidity(), fees.Low())
+				fmt.Fprintf(os.Stderr, "channel %s (%d) now has low liquidity %g, setting fee to %g\n", c.RemoteNode.Alias, c.ChannelID, c.Liquidity(), fees.Low())
 				err := r.l.SetFees(ctx, c.ChannelID, fees.Low())
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "error updating fees %v\n", err)
@@ -336,7 +336,7 @@ func (r Raiju) setFees(ctx context.Context, fees LiquidityFees, channels lightni
 			}
 		case lightning.StandardLiquidity:
 			if c.LocalFee != fees.Standard() {
-				fmt.Fprintf(os.Stderr, "channel %d now has standard liquidity %f, setting fee to %f\n", c.ChannelID, c.Liquidity(), fees.Standard())
+				fmt.Fprintf(os.Stderr, "channel %s (%d) now has standard liquidity %g, setting fee to %g\n", c.RemoteNode.Alias, c.ChannelID, c.Liquidity(), fees.Standard())
 				err := r.l.SetFees(ctx, c.ChannelID, fees.Standard())
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "error updating fees %v\n", err)
@@ -346,7 +346,7 @@ func (r Raiju) setFees(ctx context.Context, fees LiquidityFees, channels lightni
 			}
 		case lightning.HighLiquidity:
 			if c.LocalFee != fees.High() {
-				fmt.Fprintf(os.Stderr, "channel %d now has high liquidity %f, setting fee to %f\n", c.ChannelID, c.Liquidity(), fees.High())
+				fmt.Fprintf(os.Stderr, "channel %s (%d) now has high liquidity %g, setting fee to %g\n", c.RemoteNode.Alias, c.ChannelID, c.Liquidity(), fees.High())
 				err := r.l.SetFees(ctx, c.ChannelID, fees.High())
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "error updating fees %v\n", err)
