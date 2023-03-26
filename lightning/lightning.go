@@ -74,24 +74,6 @@ type Graph struct {
 	Edges []Edge
 }
 
-// ChannelLiquidityLevel coarse-grained bucket based on current liquidity.
-type ChannelLiquidityLevel string
-
-// ChannelLiquidityLevels
-const (
-	LowLiquidity      ChannelLiquidityLevel = "low"
-	StandardLiquidity ChannelLiquidityLevel = "standard"
-	HighLiquidity     ChannelLiquidityLevel = "high"
-)
-
-// Defining channel liquidity percentage based on (local capacity / total capacity).
-// When liquidity is low, there is too much inbound.
-// When liquidity is high, there is too much outbound.
-const (
-	lowLiquidityThreshold  = 25
-	highLiquidityThreshold = 75
-)
-
 // Channel between local and remote node.
 type Channel struct {
 	Edge
@@ -102,62 +84,13 @@ type Channel struct {
 	RemoteNode    Node
 }
 
-// Liquidity of the channel.
+// Liquidity percent of the channel that is local.
 func (c Channel) Liquidity() float64 {
 	return float64(c.LocalBalance) / float64(c.Capacity) * 100
 }
 
-// LiquidityLevel of the channel.
-func (c Channel) LiquidityLevel() ChannelLiquidityLevel {
-	if c.Liquidity() < lowLiquidityThreshold {
-		return LowLiquidity
-	} else if c.Liquidity() > highLiquidityThreshold {
-		return HighLiquidity
-	}
-
-	return StandardLiquidity
-}
-
-func (c Channel) PotentialLiquidityLevel(additional Satoshi) ChannelLiquidityLevel {
-	potentialLiquidity := float64(c.LocalBalance+additional) / float64(c.Capacity) * 100
-
-	if potentialLiquidity < lowLiquidityThreshold {
-		return LowLiquidity
-	} else if potentialLiquidity > highLiquidityThreshold {
-		return HighLiquidity
-	}
-
-	return StandardLiquidity
-}
-
 // Channels of node.
 type Channels []Channel
-
-// LowLiquidity channels of node.
-func (cs Channels) LowLiquidity() Channels {
-	ll := make(Channels, 0)
-
-	for _, c := range cs {
-		if c.LiquidityLevel() == LowLiquidity {
-			ll = append(ll, c)
-		}
-	}
-
-	return ll
-}
-
-// HighLiquidity channels of node.
-func (cs Channels) HighLiquidity() Channels {
-	hl := make(Channels, 0)
-
-	for _, c := range cs {
-		if c.LiquidityLevel() == HighLiquidity {
-			hl = append(hl, c)
-		}
-	}
-
-	return hl
-}
 
 // Info of a node.
 type Info struct {

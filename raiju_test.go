@@ -306,149 +306,6 @@ func TestRaiju_Candidates(t *testing.T) {
 	}
 }
 
-func TestNew(t *testing.T) {
-	type args struct {
-		l lightninger
-	}
-	tests := []struct {
-		name string
-		args args
-		want Raiju
-	}{
-		{
-			name: "happy init",
-			args: args{
-				l: nil,
-			},
-			want: Raiju{
-				l: nil,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := New(tt.args.l); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("New() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestLiquidityFees_High(t *testing.T) {
-	type fields struct {
-		standard float64
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   lightning.FeePPM
-	}{
-		{
-			name: "high fees should be 10%",
-			fields: fields{
-				standard: 10,
-			},
-			want: 1,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			l := LiquidityFees{
-				standard: tt.fields.standard,
-			}
-			if got := l.High(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("LiquidityFees.High() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestLiquidityFees_Standard(t *testing.T) {
-	type fields struct {
-		standard float64
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   lightning.FeePPM
-	}{
-		{
-			name: "standard fees should be 100%",
-			fields: fields{
-				standard: 10,
-			},
-			want: 10,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			l := LiquidityFees{
-				standard: tt.fields.standard,
-			}
-			if got := l.Standard(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("LiquidityFees.Standard() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestLiquidityFees_Low(t *testing.T) {
-	type fields struct {
-		standard float64
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   lightning.FeePPM
-	}{
-		{
-			name: "low fees should be 1000%",
-			fields: fields{
-				standard: 10,
-			},
-			want: 100,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			l := LiquidityFees{
-				standard: tt.fields.standard,
-			}
-			if got := l.Low(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("LiquidityFees.Low() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestNewLiquidityFees(t *testing.T) {
-	type args struct {
-		standard float64
-	}
-	tests := []struct {
-		name string
-		args args
-		want LiquidityFees
-	}{
-		{
-			name: "happy init",
-			args: args{
-				standard: 0,
-			},
-			want: LiquidityFees{
-				standard: 0,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewLiquidityFees(tt.args.standard); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewLiquidityFees() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_sortDistance_Less(t *testing.T) {
 	type args struct {
 		i int
@@ -988,17 +845,17 @@ func TestRaiju_Rebalance(t *testing.T) {
 func TestRaiju_Fees(t *testing.T) {
 	type fields struct {
 		l lightninger
+		f LiquidityFees
 	}
 	type args struct {
 		ctx    context.Context
-		fees   LiquidityFees
 		daemon bool
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
-		want    map[lightning.ChannelID]lightning.ChannelLiquidityLevel
+		want    map[lightning.ChannelID]lightning.FeePPM
 		wantErr bool
 	}{
 		{
@@ -1047,15 +904,16 @@ func TestRaiju_Fees(t *testing.T) {
 						return nil
 					},
 				},
+				f: LiquidityFees{
+					thresholds: []float64{80, 20},
+					fees:       []lightning.FeePPM{5, 10, 100},
+				},
 			},
 			args: args{
-				fees: LiquidityFees{
-					standard: 10,
-				},
 				daemon: false,
 			},
-			want: map[lightning.ChannelID]lightning.ChannelLiquidityLevel{
-				lightning.ChannelID(1): lightning.LowLiquidity,
+			want: map[lightning.ChannelID]lightning.FeePPM{
+				lightning.ChannelID(1): lightning.FeePPM(100),
 			},
 			wantErr: false,
 		},
@@ -1064,14 +922,52 @@ func TestRaiju_Fees(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := Raiju{
 				l: tt.fields.l,
+				f: tt.fields.f,
 			}
-			got, err := r.Fees(tt.args.ctx, tt.args.fees, tt.args.daemon)
+			got, err := r.Fees(tt.args.ctx, tt.args.daemon)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Raiju.Fees() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Raiju.Fees() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNew(t *testing.T) {
+	type args struct {
+		l lightninger
+		r LiquidityFees
+	}
+	tests := []struct {
+		name string
+		args args
+		want Raiju
+	}{
+		{
+			name: "happy init",
+			args: args{
+				l: nil,
+				r: LiquidityFees{
+					thresholds: []float64{80, 20},
+					fees:       []lightning.FeePPM{},
+				},
+			},
+			want: Raiju{
+				l: nil,
+				f: LiquidityFees{
+					thresholds: []float64{80, 20},
+					fees:       []lightning.FeePPM{},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := New(tt.args.l, tt.args.r); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("New() = %v, want %v", got, tt.want)
 			}
 		})
 	}

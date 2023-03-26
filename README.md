@@ -51,15 +51,13 @@ By default, only nodes with clearnet addresses are listed. TOR-only nodes tend t
 
 **Passively manage channel liquidity**
 
-Set channel fees based on the channel's current liquidity.
+Set channel fees based on the channel's current liquidity. The idea here is to encourage passive channel re-balancing through fees. If a channel has a too much local liquidity (high), fees are lowered in order to encourage relatively more outbound transactions. Visa versa for a channel with too little local liquidity (low). 
 
-The strategy for fee amounts is hardcoded (although I might try to add some more in the future) all fees are derived from the `-standard-liquidity-fee-ppm` flag. Channels are bucketed into three coarse grained groups: *high liquidity*, *standard liquidity*, and *low liquidity*. The idea here is to encourage passive channel re-balancing through fees. If a channel has a too much local liquidity (high), fees are lowered in order to encourage relatively more outbound transactions. Visa versa for a channel with too little local liquidity (low). So `fees` applies the `standard-liquidity-fee-ppm` to standard channels, `standard-liquidity-fee-ppm / 10` to high channels, and `standard-liquidity-fee-ppm * 10` to low channels. The following example sets fees based on a `200 ppm` standard fee:
+The global `-liquidity-thresholds` flag determines how channels are grouped into liquidity buckets, while the `-liquidity-fees` flag determines the fee settings applied to those groups. For example, if thresholds are set to `80,20` and fees set to `5,50,500`, then channels with over 80% local liquidity will have a 5 PPM fee, channels between 80% and 20% local liquidity will have a 50 PPM fee, and channels with less than 20% liquidity will have a 500 PPM fee.
 
-```
-$ raiju fees -standard-liquidity-fee-ppm 200
-```
+The `-liquidity-thresholds` and `-liquidity-fees` are global (not `fees` specific) because they are also used in the `rebalance` command to help coordinate the right amount of fees to pay in active rebalancing.
 
-`fees` supports a `-daemon` flag which keeps keeps the process alive listening for channel updates that trigger fee updates (e.g. a channel's liquidity sinks below the low level and needs its fees updated). This is helpful when used with the `rebalance` command which *actively* balances channel liquidity. Without the daemon, there is a worst case scenario of: 1. pay a lot of fees to actively `rebalance` channel's liquidity from low to standard 2. update the channel's fees to standard 3. have a large payment immediately cancel out the rebalance and it only pays standard fees (instead of higher ones which would have canceled out the cost of the rebalance).
+The `-daemon` flag keeps keeps the process alive listening for channel updates that trigger fee updates (e.g. a channel's liquidity sinks below the low level and needs its fees updated). This is helpful when used with the `rebalance` command which *actively* balances channel liquidity. Without the daemon, there is a worst case scenario of: 1. pay a lot of fees to actively `rebalance` channel's liquidity from low to standard 2. update the channel's fees to standard 3. have a large payment immediately cancel out the rebalance and it only pays standard fees (instead of higher ones which would have canceled out the cost of the rebalance).
 
 `fees` follows the [zero-base-fee movement](http://www.rene-pickhardt.de/). I am honestly not sure if this is financially sound, but I appreciate the simpler mental model of only thinking in ppm.
 
@@ -80,7 +78,7 @@ Restart=always
 Environment=RAIJU_HOST=localhost:10009
 Environment=RAIJU_MAC_PATH=/home/lightning/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
 Environment=RAIJU_TLS_PATH=/home/lightning/.lnd/tls.cert
-Environment=RAIJU_STANDARD_LIQUIDITY_FEE_PPM=200
+Environment=RAIJU_LIQUIDITY_FEES=5,50,500
 ExecStart=/usr/local/bin/raiju fees -daemon
 
 [Install]
@@ -91,7 +89,7 @@ WantedBy=multi-user.target
 
 **Actively manage channel liquidity**
 
-Circular rebalance a channel or all channels that aren't doing so hot liquidity-wise.
+Circular rebalance channels that aren't doing so hot liquidity-wise or force rebalance a single channel.
 
 Where the `fees` command attempts to balance channels passively, this is an *active* approach where liquidity is manually pushed. The cost of active rebalancing are the lightning payment fees. While this command could be used to push large amounts of liquidity, the default settings are intended to just prod things in the right direction. 
 
@@ -103,7 +101,7 @@ The command takes two arguments:
 
 A smaller step percentage will increase the likely hood of a successful payment, but might also increase fees a bit if the payment collects a lot of `base_fees` on its route.
 
-If no out channel and last hop pubkey are given, the command will roll through all channels with high liquidity (as defined by `raiju`) and attempt to push it through channels of low liquidity (as defined by `raiju`).
+If no out channel and last hop pubkey are given, the command will roll through channels with high liquidity  and attempt to push it through channels of low liquidity. High and low are defined by the defined by the global `-liquidity-thresholds` flag. For example, if liquidity thresholds is set to `80,20`, channels with local liquidity over 80% are considered "high" and channels with local liquidity under 20% are considered "low".
 
 ```
 $ raiju rebalance 1 1 
@@ -131,10 +129,8 @@ Group=lightning
 Environment=RAIJU_HOST=localhost:10009
 Environment=RAIJU_MAC_PATH=/home/lightning/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
 Environment=RAIJU_TLS_PATH=/home/lightning/.lnd/tls.cert
-Environment=RAIJU_STANDARD_LIQUIDITY_FEE_PPM=200
+Environment=RAIJU_LIQUIDITY_FEES=5,50,500
 ExecStart=/usr/local/bin/raiju rebalance 1 5
-# Optionally run fees afterward to "lock in" new liquidities
-ExecStartPost=/usr/local/bin/raiju fees
 ```
 
 Example `rebalance.timer`:
@@ -175,7 +171,7 @@ $ go install github.com/nyonson/raiju/cmd/raiju@latest
 If a container is preferred, `raiju` images are published at `ghcr.io/nyonson/raiju`. 
 
 ```
-docker pull ghcr.io/nyonson/raiju:v0.3.2
+docker pull ghcr.io/nyonson/raiju:v0.6.0
 ```
 
 A little more configuration is required to pass along settings to the container.
@@ -183,7 +179,7 @@ A little more configuration is required to pass along settings to the container.
 ```
 docker run -it \
   -v /admin.macaroon:/admin.macaroon:ro -v /tls.cert:/tls.cert:ro \
-  ghcr.io/nyonson/raiju:v0.3.2 \
+  ghcr.io/nyonson/raiju:v0.6.0 \
   -host 192.168.1.187:10009 -mac-path admin.macaroon -tls-path tls.cert
   candidates
 ```

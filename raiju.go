@@ -29,39 +29,14 @@ type lightninger interface {
 // Raiju app.
 type Raiju struct {
 	l lightninger
+	f LiquidityFees
 }
 
 // New instance of raiju.
-func New(l lightninger) Raiju {
+func New(l lightninger, r LiquidityFees) Raiju {
 	return Raiju{
 		l: l,
-	}
-}
-
-// LiquidityFees for channels with high, standard, and low liquidity.
-type LiquidityFees struct {
-	standard float64
-}
-
-// High liquidity channel fee to encourage more payments.
-func (l LiquidityFees) High() lightning.FeePPM {
-	return lightning.FeePPM(l.standard / 10)
-}
-
-// Standard liquidity channel fee.
-func (l LiquidityFees) Standard() lightning.FeePPM {
-	return lightning.FeePPM(l.standard)
-}
-
-// Low liquidity channel fee to discourage payments.
-func (l LiquidityFees) Low() lightning.FeePPM {
-	return lightning.FeePPM(l.standard * 10)
-}
-
-// NewLiquidityFees based on the standard fee.
-func NewLiquidityFees(standard float64) LiquidityFees {
-	return LiquidityFees{
-		standard: standard,
+		f: r,
 	}
 }
 
@@ -285,27 +260,27 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 // Fees to encourage a balanced channel.
 //
 // Daemon mode continuously updates policies as channel liquidity changes.
-func (r Raiju) Fees(ctx context.Context, fees LiquidityFees, daemon bool) (map[lightning.ChannelID]lightning.ChannelLiquidityLevel, error) {
+func (r Raiju) Fees(ctx context.Context, daemon bool) (map[lightning.ChannelID]lightning.FeePPM, error) {
 	channels, err := r.l.ListChannels(ctx)
 	if err != nil {
-		return map[lightning.ChannelID]lightning.ChannelLiquidityLevel{}, err
+		return map[lightning.ChannelID]lightning.FeePPM{}, err
 	}
 
-	c, err := r.setFees(ctx, fees, channels)
+	updates, err := r.setFees(ctx, channels)
 	if err != nil {
-		return map[lightning.ChannelID]lightning.ChannelLiquidityLevel{}, err
+		return map[lightning.ChannelID]lightning.FeePPM{}, err
 	}
 
 	if daemon {
 		cc, ce, err := r.l.SubscribeChannelUpdates(ctx)
 		if err != nil {
-			return map[lightning.ChannelID]lightning.ChannelLiquidityLevel{}, err
+			return map[lightning.ChannelID]lightning.FeePPM{}, err
 		}
 
 		for {
 			select {
 			case channels = <-cc:
-				_, err = r.setFees(ctx, fees, channels)
+				_, err = r.setFees(ctx, channels)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "error setting fees %v\n", err)
 				}
@@ -315,44 +290,22 @@ func (r Raiju) Fees(ctx context.Context, fees LiquidityFees, daemon bool) (map[l
 		}
 	}
 
-	return c, nil
+	return updates, nil
 }
 
 // setFees on channels who's liquidity has changed, return updated channels and their new liquidity level.
-func (r Raiju) setFees(ctx context.Context, fees LiquidityFees, channels lightning.Channels) (map[lightning.ChannelID]lightning.ChannelLiquidityLevel, error) {
-	updates := make(map[lightning.ChannelID]lightning.ChannelLiquidityLevel)
+func (r Raiju) setFees(ctx context.Context, channels lightning.Channels) (map[lightning.ChannelID]lightning.FeePPM, error) {
+	updates := make(map[lightning.ChannelID]lightning.FeePPM)
 	// update channel fees based on liquidity, but only change if necessary
 	for _, c := range channels {
-		switch c.LiquidityLevel() {
-		case lightning.LowLiquidity:
-			if c.LocalFee != fees.Low() {
-				fmt.Fprintf(os.Stderr, "channel %s (%d) now has low liquidity %g, setting fee to %g\n", c.RemoteNode.Alias, c.ChannelID, c.Liquidity(), fees.Low())
-				err := r.l.SetFees(ctx, c.ChannelID, fees.Low())
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "error updating fees %v\n", err)
-				} else {
-					updates[c.ChannelID] = lightning.LowLiquidity
-				}
-			}
-		case lightning.StandardLiquidity:
-			if c.LocalFee != fees.Standard() {
-				fmt.Fprintf(os.Stderr, "channel %s (%d) now has standard liquidity %g, setting fee to %g\n", c.RemoteNode.Alias, c.ChannelID, c.Liquidity(), fees.Standard())
-				err := r.l.SetFees(ctx, c.ChannelID, fees.Standard())
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "error updating fees %v\n", err)
-				} else {
-					updates[c.ChannelID] = lightning.StandardLiquidity
-				}
-			}
-		case lightning.HighLiquidity:
-			if c.LocalFee != fees.High() {
-				fmt.Fprintf(os.Stderr, "channel %s (%d) now has high liquidity %g, setting fee to %g\n", c.RemoteNode.Alias, c.ChannelID, c.Liquidity(), fees.High())
-				err := r.l.SetFees(ctx, c.ChannelID, fees.High())
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "error updating fees %v\n", err)
-				} else {
-					updates[c.ChannelID] = lightning.HighLiquidity
-				}
+		fee := r.f.Fee(c)
+		if c.LocalFee != fee {
+			fmt.Fprintf(os.Stderr, "channel %s (%d) now has liquidity %g, setting fee to %g\n", c.RemoteNode.Alias, c.ChannelID, c.Liquidity(), fee)
+			err := r.l.SetFees(ctx, c.ChannelID, fee)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error updating fees %v\n", err)
+			} else {
+				updates[c.ChannelID] = fee
 			}
 		}
 	}
@@ -411,8 +364,7 @@ func (r Raiju) RebalanceAll(ctx context.Context, stepPercent float64, maxPercent
 		return err
 	}
 
-	hlcs := channels.HighLiquidity()
-	llcs := channels.LowLiquidity()
+	hlcs, llcs := r.f.RebalanceChannels(channels)
 
 	// Shuffle arrays so different combos are tried
 	rand.Shuffle(len(hlcs), func(i, j int) {
@@ -444,7 +396,7 @@ func (r Raiju) RebalanceAll(ctx context.Context, stepPercent float64, maxPercent
 				return err
 			}
 			potentialLocal := lightning.Satoshi(float64(h.Capacity) * maxPercent)
-			if ul.PotentialLiquidityLevel(potentialLocal) == lightning.LowLiquidity {
+			if r.f.PotentialFee(ul, potentialLocal) != r.f.Fee(ul) {
 				// don't really care if error or not, just continue on
 				p, f, _ := r.Rebalance(ctx, h.ChannelID, lastHopPubkey, stepPercent, (maxPercent - percentRebalanced), maxFee)
 				percentRebalanced += p

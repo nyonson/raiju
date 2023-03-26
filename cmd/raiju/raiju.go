@@ -26,6 +26,31 @@ const (
 	rpcTimeout = time.Minute * 5
 )
 
+func parseFees(thresholds string, fees string) (raiju.LiquidityFees, error) {
+	// using FieldsFunc to handle empty string case correctly
+	rawThresholds := strings.FieldsFunc(thresholds, func(c rune) bool { return c == ',' })
+	tfs := make([]float64, len(rawThresholds))
+	for i, t := range rawThresholds {
+		tf, err := strconv.ParseFloat(t, 64)
+		if err != nil {
+			return raiju.LiquidityFees{}, err
+		}
+		tfs[i] = tf
+	}
+
+	rawFees := strings.FieldsFunc(fees, func(c rune) bool { return c == ',' })
+	ffs := make([]lightning.FeePPM, len(rawFees))
+	for i, f := range rawFees {
+		ff, err := strconv.ParseFloat(f, 64)
+		if err != nil {
+			return raiju.LiquidityFees{}, err
+		}
+		ffs[i] = lightning.FeePPM(ff)
+	}
+
+	return raiju.NewLiquidityFees(tfs, ffs)
+}
+
 func main() {
 	cmdLog := log.New(os.Stderr, "raiju: ", 0)
 
@@ -43,8 +68,9 @@ func main() {
 	tlsPath := rootFlagSet.String("tls-path", "", "LND node tls certificate")
 	macPath := rootFlagSet.String("mac-path", "", "Macaroon with necessary permissions for lnd node")
 	network := rootFlagSet.String("network", "mainnet", "The bitcoin network")
-	// liquidity flags
-	standardLiquidityFeePPM := rootFlagSet.Float64("standard-liquidity-fee-ppm", 200, "Default fee in PPM for standard liquidity channels which is shared by subcommands")
+	// fees flags
+	liquidityThresholds := rootFlagSet.String("liquidity-thresholds", "80,20", "Comma separated local liquidity percent thresholds")
+	liquidityFees := rootFlagSet.String("liquidity-fees", "5,50,500", "Comma separated local liquidity-based fees PPM")
 
 	candidatesFlagSet := flag.NewFlagSet("candidates", flag.ExitOnError)
 	minCapacity := candidatesFlagSet.Int64("min-capacity", 1000000, "Minimum capacity of a node in satoshis")
@@ -85,13 +111,18 @@ func main() {
 			}
 
 			c := lnd.New(services.Client, services.Client, services.Router, *network)
-			r := raiju.New(c)
+			f, err := parseFees(*liquidityThresholds, *liquidityFees)
+			if err != nil {
+				return err
+			}
+
+			r := raiju.New(c, f)
 
 			// using FieldsFunc to handle empty string case correctly
-			raw := strings.FieldsFunc(*assume, func(c rune) bool { return c == ',' })
-			assume := make([]lightning.PubKey, len(raw))
-			for i, a := range raw {
-				assume[i] = lightning.PubKey(a)
+			a := strings.FieldsFunc(*assume, func(c rune) bool { return c == ',' })
+			assume := make([]lightning.PubKey, len(a))
+			for i, p := range a {
+				assume[i] = lightning.PubKey(p)
 			}
 
 			request := raiju.CandidatesRequest{
@@ -119,7 +150,7 @@ func main() {
 		Name:       "fees",
 		ShortUsage: "raiju fees",
 		ShortHelp:  "Set channel fees based on liquidity to passively rebalance channels",
-		LongHelp:   "Channels are grouped into three coarse grained buckets: standard, high, and low. Channels with standard liquidity will have the standard fee applied. Channels with high liquidity will have a 10x the standard fee applied to discourage routing. And channels with low liquidity will have 1/10 the standard fee applied to encourage routing.",
+		LongHelp:   "Channels are grouped depending on the local liquidity thresholds setting and have fees applied based on the local liquidity fees setting.",
 		FlagSet:    feesFlagSet,
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) != 0 {
@@ -140,9 +171,14 @@ func main() {
 			}
 
 			c := lnd.New(services.Client, services.Client, services.Router, *network)
-			r := raiju.New(c)
+			f, err := parseFees(*liquidityThresholds, *liquidityFees)
+			if err != nil {
+				return err
+			}
 
-			_, err = r.Fees(ctx, raiju.NewLiquidityFees(*standardLiquidityFeePPM), *daemon)
+			r := raiju.New(c, f)
+
+			_, err = r.Fees(ctx, *daemon)
 
 			return err
 		},
@@ -157,7 +193,7 @@ func main() {
 		Name:       "rebalance",
 		ShortUsage: "raiju rebalance <step-percent> <max-percent>",
 		ShortHelp:  "Send circular payment(s) to actively rebalance channels",
-		LongHelp:   "If the output and input flags are set, a rebalance is attempted (both must be set together). If not, channels are grouped into three coarse grained buckets: standard, high, and low. Standard channels will be ignored since their liquidity is good. High channels will attempt to push the percent of their capacity at a time to the low channels, stopping if their liquidity improves enough or if all channels have been tried.",
+		LongHelp:   "By default, attempts to move liquidity from the channels with the highest local liquidity to the lowest. If an out channel and last hop node are specified however, this is and implicit force command and attempts to move the liquidity damn whatever the current local amounts.",
 		FlagSet:    rebalanceFlagSet,
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) != 2 {
@@ -192,12 +228,15 @@ func main() {
 			}
 
 			c := lnd.New(services.Client, services.Client, services.Router, *network)
-			r := raiju.New(c)
+			f, err := parseFees(*liquidityThresholds, *liquidityFees)
+			if err != nil {
+				return err
+			}
 
-			fees := raiju.NewLiquidityFees(*standardLiquidityFeePPM)
+			r := raiju.New(c, f)
 
 			// default to low liquidity fee, override with flag
-			maxFee := fees.Low()
+			maxFee := f.RebalanceFee()
 			if *maxFeePPM != 0 {
 				maxFee = lightning.FeePPM(*maxFeePPM)
 			}
@@ -239,7 +278,12 @@ func main() {
 			}
 
 			c := lnd.New(services.Client, services.Client, services.Router, *network)
-			r := raiju.New(c)
+			f, err := parseFees(*liquidityThresholds, *liquidityFees)
+			if err != nil {
+				return err
+			}
+
+			r := raiju.New(c, f)
 
 			_, err = r.Reaper(ctx)
 
