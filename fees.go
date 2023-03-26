@@ -2,6 +2,8 @@ package raiju
 
 import (
 	"errors"
+	"fmt"
+	"os"
 
 	"github.com/nyonson/raiju/lightning"
 )
@@ -60,8 +62,22 @@ func (lf LiquidityFees) RebalanceChannels(channels lightning.Channels) (high lig
 	return high, low
 }
 
+// RebalanceFee is the max fee to use in a circular rebalance to ensure its not wasted.
 func (lf LiquidityFees) RebalanceFee() lightning.FeePPM {
 	return lf.fees[len(lf.fees)-1]
+}
+
+// PrintSettings to output.
+func (lf LiquidityFees) PrintSettings() {
+	for i := 0; i < len(lf.fees); i++ {
+		if i == len(lf.fees)-1 {
+			fmt.Fprintf(os.Stderr, "channels under %g%% local liquidity to %g ppm\n", lf.thresholds[i-1], lf.fees[i])
+		} else if i == 0 {
+			fmt.Fprintf(os.Stderr, "channels over %g%% local liquidity to %g ppm, ", lf.thresholds[i], lf.fees[i])
+		} else {
+			fmt.Fprintf(os.Stderr, "channels between %g%% and %g%% local liquidity to %g ppm, ", lf.thresholds[i-1], lf.thresholds[i], lf.fees[i])
+		}
+	}
 }
 
 // NewLiquidityFees with threshold and fee validation.

@@ -48,7 +48,14 @@ func parseFees(thresholds string, fees string) (raiju.LiquidityFees, error) {
 		ffs[i] = lightning.FeePPM(ff)
 	}
 
-	return raiju.NewLiquidityFees(tfs, ffs)
+	lf, err := raiju.NewLiquidityFees(tfs, ffs)
+	if err != nil {
+		return raiju.LiquidityFees{}, err
+	}
+
+	lf.PrintSettings()
+
+	return lf, nil
 }
 
 func main() {
