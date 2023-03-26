@@ -10,7 +10,7 @@
 
 **Your friendly bitcoin lightning network helper.**
 
-`raiju` is a CLI app which sits on top of a lightning node and brings some smarts (perhaps that is debateable) to the channel life-cycle: creation, liquidity management, and closing. `raiju` only supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation at the moment.
+`raiju` is a CLI app which sits on top of a lightning node and brings some smarts (perhaps that is debateable) to the channel life-cycle: open, manage, and close. `raiju` only supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation at the moment.
 
 - [commands](#commands)
   - [candidates](#candidates)
