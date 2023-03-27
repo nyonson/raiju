@@ -6,7 +6,6 @@
 @generate:
   go install github.com/cweill/gotests/gotests@latest
   go install github.com/matryer/moq@v0.3.1
-  find . -type f -name "*.go" ! -name "*test.go" -exec gotests -exported -w '{}' \;  
   go generate ./...
 
 # install the executable

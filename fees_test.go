@@ -345,3 +345,25 @@ func TestNewLiquidityFees(t *testing.T) {
 		})
 	}
 }
+
+func TestLiquidityFees_PrintSettings(t *testing.T) {
+	type fields struct {
+		thresholds []float64
+		fees       []lightning.FeePPM
+	}
+	tests := []struct {
+		name   string
+		fields fields
+	}{
+		// No tests
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(_ *testing.T) {
+			lf := LiquidityFees{
+				thresholds: tt.fields.thresholds,
+				fees:       tt.fields.fees,
+			}
+			lf.PrintSettings()
+		})
+	}
+}

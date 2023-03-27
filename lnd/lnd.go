@@ -24,6 +24,7 @@ import (
 	"github.com/nyonson/raiju/lightning"
 )
 
+//go:generate gotests -w -exported .
 //go:generate moq -stub -skip-ensure -out lnd_mock_test.go . channeler router invoicer
 
 // channeler is the minimum channel requirements from LND.

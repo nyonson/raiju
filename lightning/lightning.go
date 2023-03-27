@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+//go:generate gotests -w -exported .
+
 // Satoshi unit of bitcoin.
 type Satoshi int64
 
