@@ -81,6 +81,7 @@ Environment=RAIJU_HOST=localhost:10009
 Environment=RAIJU_MAC_PATH=/home/lightning/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
 Environment=RAIJU_TLS_PATH=/home/lightning/.lnd/tls.cert
 Environment=RAIJU_LIQUIDITY_FEES=5,50,500
+Environment=RAIJU_LIQUIDITY_STICKINESS=5
 ExecStart=/usr/local/bin/raiju fees -daemon
 
 [Install]
@@ -132,6 +133,7 @@ Environment=RAIJU_HOST=localhost:10009
 Environment=RAIJU_MAC_PATH=/home/lightning/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
 Environment=RAIJU_TLS_PATH=/home/lightning/.lnd/tls.cert
 Environment=RAIJU_LIQUIDITY_FEES=5,50,500
+Environment=RAIJU_LIQUIDITY_STICKINESS=5
 ExecStart=/usr/local/bin/raiju rebalance 1 5
 ```
 
@@ -173,7 +175,7 @@ $ go install github.com/nyonson/raiju/cmd/raiju@latest
 If a container is preferred, `raiju` images are published at `ghcr.io/nyonson/raiju`. 
 
 ```
-docker pull ghcr.io/nyonson/raiju:v0.6.0
+docker pull ghcr.io/nyonson/raiju:v0.7.0
 ```
 
 A little more configuration is required to pass along settings to the container.
@@ -181,7 +183,7 @@ A little more configuration is required to pass along settings to the container.
 ```
 docker run -it \
   -v /admin.macaroon:/admin.macaroon:ro -v /tls.cert:/tls.cert:ro \
-  ghcr.io/nyonson/raiju:v0.6.0 \
+  ghcr.io/nyonson/raiju:v0.7.0 \
   -host 192.168.1.187:10009 -mac-path admin.macaroon -tls-path tls.cert
   candidates
 ```
