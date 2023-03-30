@@ -16,23 +16,24 @@ import (
 type LiquidityFees struct {
 	thresholds []float64
 	fees       []lightning.FeePPM
+	stickiness float64
 }
 
 // Fee for channel based on its current liquidity.
 func (lf LiquidityFees) Fee(channel lightning.Channel) lightning.FeePPM {
 	liquidity := float64(channel.LocalBalance) / float64(channel.Capacity) * 100
 
-	return lf.findFee(liquidity)
+	return lf.findFee(liquidity, channel.LocalFee)
 }
 
 // PotentialFee for channel based on its current liquidity.
 func (lf LiquidityFees) PotentialFee(channel lightning.Channel, additionalLocal lightning.Satoshi) lightning.FeePPM {
 	liquidity := float64(channel.LocalBalance+additionalLocal) / float64(channel.Capacity) * 100
 
-	return lf.findFee(liquidity)
+	return lf.findFee(liquidity, channel.LocalFee)
 }
 
-func (lf LiquidityFees) findFee(liquidity float64) lightning.FeePPM {
+func (lf LiquidityFees) findFee(liquidity float64, currentFee lightning.FeePPM) lightning.FeePPM {
 	bucket := 0
 	for bucket < len(lf.thresholds) {
 		if liquidity > lf.thresholds[bucket] {
@@ -43,7 +44,42 @@ func (lf LiquidityFees) findFee(liquidity float64) lightning.FeePPM {
 
 	}
 
-	return lf.fees[bucket]
+	newFee := lf.fees[bucket]
+
+	// apply stickiness if fee is heading in the right direction, but wanna hold on for a bit to limit gossip
+	if liquidity < 50 && newFee < currentFee {
+		lowBucket := 0
+		for lowBucket < len(lf.thresholds) {
+			if liquidity > lf.thresholds[lowBucket]+lf.stickiness {
+				break
+			} else {
+				lowBucket += 1
+			}
+
+		}
+
+		if lowBucket != bucket {
+			fmt.Fprintf(os.Stderr, "keeping fee due to stickiness")
+		}
+		newFee = lf.fees[lowBucket]
+	} else if liquidity >= 50 && newFee > currentFee {
+		highBucket := 0
+		for highBucket < len(lf.thresholds) {
+			if liquidity > lf.thresholds[highBucket]-lf.stickiness {
+				break
+			} else {
+				highBucket += 1
+			}
+
+		}
+
+		if highBucket != bucket {
+			fmt.Fprintf(os.Stderr, "keeping fee due to stickiness")
+		}
+		newFee = lf.fees[highBucket]
+	}
+
+	return newFee
 }
 
 // RebalanceChannels at the far ends of the spectrum.
@@ -81,7 +117,7 @@ func (lf LiquidityFees) PrintSettings() {
 }
 
 // NewLiquidityFees with threshold and fee validation.
-func NewLiquidityFees(thresholds []float64, fees []lightning.FeePPM) (LiquidityFees, error) {
+func NewLiquidityFees(thresholds []float64, fees []lightning.FeePPM, stickiness float64) (LiquidityFees, error) {
 	// ensure every bucket has a fee
 	if len(thresholds)+1 != len(fees) {
 		return LiquidityFees{}, errors.New("fees must have one more value than thresholds to ensure each bucket has a defined fee")
@@ -102,8 +138,14 @@ func NewLiquidityFees(thresholds []float64, fees []lightning.FeePPM) (LiquidityF
 		}
 	}
 
+	// ensure stickiness percent makes sense
+	if stickiness > 100 {
+		return LiquidityFees{}, errors.New("stickiness must be a percent")
+	}
+
 	return LiquidityFees{
 		thresholds: thresholds,
 		fees:       fees,
+		stickiness: stickiness,
 	}, nil
 }

@@ -31,7 +31,7 @@ All of `raiju`'s commands can be listed with the global help flag, `raiju -h`, a
 
 List the best nodes to open a channel to from the current node. `candidates` does not automatically open any channels, that needs to be done out-of-band with a different tool such as `lncli`. `candidates` just lists suggestions and is not intended to be automated (for now...). 
 
-The current node has distance `0` to itself and distance `1` to the nodes it has channels with. A node with distance `2` has a channel with a node the current node is connected too, but no channel with the current node, and so on. "Distant Neighbors" are distant (greater than `2`) from the current node, but have a channel with the candidate. Theoretically, these most distant nodes with the most distant neighbor connections are the best to open a channel to for some off the beaten path efficient routing (vs. just connecting to the biggest node in the network).  
+The current node has distance `0` to itself and distance `1` to the nodes it has channels with. A node with distance `2` has a channel with a node the current node is connected too, but no channel with the current node, and so on. "Distant Neighbors" are distant (greater than `2`) from the current node, but have a channel with the candidate. By default, only nodes with clearnet addresses are listed. TOR-only nodes tend to be unreliable due to the nature of TOR.
 
 ```
 $ raiju candidates
@@ -45,7 +45,7 @@ Pubkey                                                              Alias       
 
 The `assume` flag allows you to see the remaining candidates and updated stats assuming channels were opened to the given nodes. This can be used to find a set of nodes to open channels too in single batch transaction in order to minimize on onchain fees.
 
-By default, only nodes with clearnet addresses are listed. TOR-only nodes tend to be unreliable due to the nature of TOR.
+From a "make money routing" perspective, theoretically, these most distant nodes with the most distant neighbor connections are good to open a channel to for some off the beaten path efficient routing vs. just connecting to the biggest node in the network. Your node could offer cheaper, better routing between two "clusters" of nodes than the biggest nodes. From a "make the network stronger in general" perspective, the hope is that this strategy creates a more decentralized network vs. everything being dependent on a handful of large hub nodes. 
 
 ## fees
 
@@ -55,7 +55,9 @@ Set channel fees based on the channel's current liquidity. The idea here is to e
 
 The global `-liquidity-thresholds` flag determines how channels are grouped into liquidity buckets, while the `-liquidity-fees` flag determines the fee settings applied to those groups. For example, if thresholds are set to `80,20` and fees set to `5,50,500`, then channels with over 80% local liquidity will have a 5 PPM fee, channels between 80% and 20% local liquidity will have a 50 PPM fee, and channels with less than 20% liquidity will have a 500 PPM fee.
 
-The `-liquidity-thresholds` and `-liquidity-fees` are global (not `fees` specific) because they are also used in the `rebalance` command to help coordinate the right amount of fees to pay in active rebalancing.
+The `-liquidity-stickiness` attempts to avoid extra gossip by waiting for channels to return to a healthier liquidity state before changing fees. If using the same settings as before, plus a stickiness setting of 5%, if a channel moves from 19% liquidity to 23% liquidity it will still have a 500 PPM fee. It needs to move to something better than 25% (20% + 5%) before the fee will change. The stickiness setting only applies to liquidity moving in a healthy (towards center) direction. If you are drastically changing your fee settings, you probably want to set stickiness to 0 temporarily to ensure fees are updated.
+
+The `-liquidity-thresholds`, `-liquidity-fees`, and `-liquidity-stickiness` are global (not `fees` specific) because they are also used in the `rebalance` command to help coordinate the right amount of fees to pay in active rebalancing.
 
 The `-daemon` flag keeps keeps the process alive listening for channel updates that trigger fee updates (e.g. a channel's liquidity sinks below the low level and needs its fees updated). This is helpful when used with the `rebalance` command which *actively* balances channel liquidity. Without the daemon, there is a worst case scenario of: 1. pay a lot of fees to actively `rebalance` channel's liquidity from low to standard 2. update the channel's fees to standard 3. have a large payment immediately cancel out the rebalance and it only pays standard fees (instead of higher ones which would have canceled out the cost of the rebalance).
 

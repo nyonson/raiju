@@ -26,7 +26,7 @@ const (
 	rpcTimeout = time.Minute * 5
 )
 
-func parseFees(thresholds string, fees string) (raiju.LiquidityFees, error) {
+func parseFees(thresholds string, fees string, stickiness float64) (raiju.LiquidityFees, error) {
 	// using FieldsFunc to handle empty string case correctly
 	rawThresholds := strings.FieldsFunc(thresholds, func(c rune) bool { return c == ',' })
 	tfs := make([]float64, len(rawThresholds))
@@ -48,7 +48,7 @@ func parseFees(thresholds string, fees string) (raiju.LiquidityFees, error) {
 		ffs[i] = lightning.FeePPM(ff)
 	}
 
-	lf, err := raiju.NewLiquidityFees(tfs, ffs)
+	lf, err := raiju.NewLiquidityFees(tfs, ffs, stickiness)
 	if err != nil {
 		return raiju.LiquidityFees{}, err
 	}
@@ -76,8 +76,9 @@ func main() {
 	macPath := rootFlagSet.String("mac-path", "", "Macaroon with necessary permissions for lnd node")
 	network := rootFlagSet.String("network", "mainnet", "The bitcoin network")
 	// fees flags
-	liquidityThresholds := rootFlagSet.String("liquidity-thresholds", "80,20", "Comma separated local liquidity percent thresholds")
+	liquidityThresholds := rootFlagSet.String("liquidity-thresholds", "85,15", "Comma separated local liquidity percent thresholds")
 	liquidityFees := rootFlagSet.String("liquidity-fees", "5,50,500", "Comma separated local liquidity-based fees PPM")
+	liquidityStickiness := rootFlagSet.Float64("liquidity-stickiness", 0, "Percent of a channel capacity beyond threshold to wait before changing fees from settings attempting to improve liquidity")
 
 	candidatesFlagSet := flag.NewFlagSet("candidates", flag.ExitOnError)
 	minCapacity := candidatesFlagSet.Int64("min-capacity", 1000000, "Minimum capacity of a node in satoshis")
@@ -118,7 +119,7 @@ func main() {
 			}
 
 			c := lnd.New(services.Client, services.Client, services.Router, *network)
-			f, err := parseFees(*liquidityThresholds, *liquidityFees)
+			f, err := parseFees(*liquidityThresholds, *liquidityFees, *liquidityStickiness)
 			if err != nil {
 				return err
 			}
@@ -178,7 +179,7 @@ func main() {
 			}
 
 			c := lnd.New(services.Client, services.Client, services.Router, *network)
-			f, err := parseFees(*liquidityThresholds, *liquidityFees)
+			f, err := parseFees(*liquidityThresholds, *liquidityFees, *liquidityStickiness)
 			if err != nil {
 				return err
 			}
@@ -235,7 +236,7 @@ func main() {
 			}
 
 			c := lnd.New(services.Client, services.Client, services.Router, *network)
-			f, err := parseFees(*liquidityThresholds, *liquidityFees)
+			f, err := parseFees(*liquidityThresholds, *liquidityFees, *liquidityStickiness)
 			if err != nil {
 				return err
 			}
@@ -285,7 +286,7 @@ func main() {
 			}
 
 			c := lnd.New(services.Client, services.Client, services.Router, *network)
-			f, err := parseFees(*liquidityThresholds, *liquidityFees)
+			f, err := parseFees(*liquidityThresholds, *liquidityFees, *liquidityStickiness)
 			if err != nil {
 				return err
 			}
