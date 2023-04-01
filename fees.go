@@ -59,7 +59,7 @@ func (lf LiquidityFees) findFee(liquidity float64, currentFee lightning.FeePPM) 
 		}
 
 		if lowBucket != bucket {
-			fmt.Fprintf(os.Stderr, "keeping fee due to stickiness")
+			fmt.Fprintf(os.Stderr, "keeping fee due to stickiness\n")
 		}
 		newFee = lf.fees[lowBucket]
 	} else if liquidity >= 50 && newFee > currentFee {
@@ -74,7 +74,7 @@ func (lf LiquidityFees) findFee(liquidity float64, currentFee lightning.FeePPM) 
 		}
 
 		if highBucket != bucket {
-			fmt.Fprintf(os.Stderr, "keeping fee due to stickiness")
+			fmt.Fprintf(os.Stderr, "keeping fee due to stickiness\n")
 		}
 		newFee = lf.fees[highBucket]
 	}
