@@ -247,11 +247,10 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 
 	sort.Sort(sort.Reverse(sortDistance(allCandidates)))
 
-	if int64(len(allCandidates)) < request.Limit {
-		return allCandidates, nil
+	candidates := allCandidates
+	if int64(len(allCandidates)) >= request.Limit {
+		candidates = allCandidates[:request.Limit]
 	}
-
-	candidates := allCandidates[:request.Limit]
 
 	printNodes(candidates)
 
