@@ -175,7 +175,7 @@ $ go install github.com/nyonson/raiju/cmd/raiju@latest
 If a container is preferred, `raiju` images are published at `ghcr.io/nyonson/raiju`. 
 
 ```
-docker pull ghcr.io/nyonson/raiju:v0.7.0
+docker pull ghcr.io/nyonson/raiju:v0.7.1
 ```
 
 A little more configuration is required to pass along settings to the container.
@@ -183,7 +183,7 @@ A little more configuration is required to pass along settings to the container.
 ```
 docker run -it \
   -v /admin.macaroon:/admin.macaroon:ro -v /tls.cert:/tls.cert:ro \
-  ghcr.io/nyonson/raiju:v0.7.0 \
+  ghcr.io/nyonson/raiju:v0.7.1 \
   -host 192.168.1.187:10009 -mac-path admin.macaroon -tls-path tls.cert
   candidates
 ```
