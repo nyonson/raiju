@@ -1,47 +1,52 @@
 package view
 
 import (
+	"context"
+	"strconv"
+	"time"
+
 	"github.com/nyonson/raiju"
-	"github.com/nyonson/raiju/lightning"
-	"github.com/rodaine/table"
+	"github.com/rivo/tview"
 )
 
-// PrintNodes in table formatted list.
-func PrintNodes(nodes []raiju.RelativeNode) error {
-	tbl := table.New("Pubkey", "Alias", "Distance", "Distant Neighbors", "Capacity (BTC)", "Channels", "Updated", "Addresses")
+func ViewCandidates(ctx context.Context, r raiju.Raiju) (*tview.Flex, error) {
+	flex := tview.NewFlex()
 
-	for _, v := range nodes {
-		tbl.AddRow(v.PubKey, v.Alias, v.Distance, v.DistantNeigbors, lightning.Satoshi(v.Capacity).BTC(), v.Channels, v.Updated, v.Addresses)
+	table := tview.NewTable().SetSelectable(true, false)
+	table.SetBorder(true).SetTitle("Candidates")
+
+	button := tview.NewButton("Refresh")
+
+	flex.AddItem(table, 0, 4, false)
+	flex.AddItem(button, 0, 1, true)
+
+	request := raiju.CandidatesRequest{
+		MinCapacity:         1000000,
+		MinChannels:         1,
+		MinDistance:         2,
+		MinDistantNeighbors: 0,
+		MinUpdated:          time.Now().Add(-2 * 24 * time.Hour),
+		Limit:               200,
+		Clearnet:            true,
 	}
-	tbl.Print()
-
-	return nil
-}
-
-// PrintChannels in table formatted list.
-func PrintChannels(channels lightning.Channels) error {
-	tbl := table.New("Channel ID", "Alias", "Capacity (BTC)")
-
-	for _, c := range channels {
-		tbl.AddRow(c.ChannelID, c.RemoteNode.Alias, lightning.Satoshi(c.Capacity).BTC())
-	}
-
-	tbl.Print()
-
-	return nil
-}
-
-// PrintSettings to output.
-func PrintFees(lf raiju.LiquidityFees) error {
-	tbl := table.New("Local Liquidity Threshold Percent", "Fee PPM")
-
-	for i := 0; i < len(lf.Thresholds); i++ {
-		tbl.AddRow(lf.Thresholds[i], lf.Fees[i])
+	nodes, err := r.Candidates(ctx, request)
+	if err != nil {
+		return nil, err
 	}
 
-	tbl.AddRow(0, lf.Fees[len(lf.Fees)-1])
+	// headers
+	table.SetCellSimple(0, 0, "PubKey")
+	table.SetCellSimple(0, 2, "Distance")
+	table.SetCellSimple(0, 3, "Distant Neighbors")
 
-	tbl.Print()
+	// content
+	row := 1
+	for _, n := range nodes {
+		table.SetCellSimple(row, 0, string(n.PubKey))
+		table.SetCellSimple(row, 2, strconv.FormatInt(n.Distance, 10))
+		table.SetCellSimple(row, 3, strconv.FormatInt(n.DistantNeigbors, 10))
+		row++
+	}
 
-	return nil
+	return flex, nil
 }

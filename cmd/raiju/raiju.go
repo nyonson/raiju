@@ -15,6 +15,7 @@ import (
 	"github.com/lightninglabs/lndclient"
 	"github.com/peterbourgon/ff/v3"
 	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/rivo/tview"
 
 	"github.com/nyonson/raiju"
 	"github.com/nyonson/raiju/lightning"
@@ -151,7 +152,7 @@ func main() {
 				return err
 			}
 
-			view.PrintNodes(candidates)
+			view.TableNodes(candidates)
 
 			return nil
 		},
@@ -190,7 +191,7 @@ func main() {
 				return err
 			}
 
-			view.PrintFees(f)
+			view.TableFees(f)
 
 			r := raiju.New(c, f)
 
@@ -266,7 +267,7 @@ func main() {
 				return err
 			}
 
-			view.PrintFees(f)
+			view.TableFees(f)
 
 			r := raiju.New(c, f)
 
@@ -337,7 +338,7 @@ func main() {
 				return err
 			}
 
-			view.PrintChannels(channels)
+			view.TableChannels(channels)
 
 			return nil
 		},
@@ -348,8 +349,48 @@ func main() {
 		FlagSet:     rootFlagSet,
 		Subcommands: []*ffcli.Command{candidatesCmd, feesCmd, rebalanceCmd, reaperCmd},
 		Options:     []ff.Option{ff.WithEnvVarPrefix("RAIJU"), ff.WithConfigFileFlag("config"), ff.WithConfigFileParser(ff.PlainParser), ff.WithAllowMissingConfigFile(true)},
-		Exec: func(context.Context, []string) error {
-			return flag.ErrHelp
+		Exec: func(ctx context.Context, args []string) error {
+			if len(args) != 0 {
+				return errors.New("raiju does not take any args")
+			}
+
+			cfg := &lndclient.LndServicesConfig{
+				LndAddress:         *host,
+				Network:            lndclient.Network(*network),
+				CustomMacaroonPath: *macPath,
+				TLSPath:            *tlsPath,
+				RPCTimeout:         rpcTimeout,
+			}
+			services, err := lndclient.NewLndServices(cfg)
+			if err != nil {
+				return err
+			}
+
+			c := lnd.New(services.Client, services.Client, services.Router, *network)
+			f, err := parseFees(*liquidityThresholds, *liquidityFees, *liquidityStickiness)
+			if err != nil {
+				return err
+			}
+
+			r := raiju.New(c, f)
+
+			app := tview.NewApplication()
+			flex := tview.NewFlex()
+			flex.SetBorder(true).SetTitle("raiju")
+			app.SetRoot(flex, true)
+
+			view, err := view.ViewCandidates(ctx, r)
+			if err != nil {
+				return err
+			}
+
+			flex.AddItem(view, 0, 1, true)
+
+			if err := app.Run(); err != nil {
+				return err
+			}
+
+			return nil
 		},
 	}
 
