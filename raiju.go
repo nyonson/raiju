@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"os"
 	"sort"
 	"time"
 
@@ -44,11 +43,11 @@ func New(l lightninger, r LiquidityFees) Raiju {
 // RelativeNode has information on a node's graph characteristics relative to other nodes.
 type RelativeNode struct {
 	lightning.Node
-	distance        int64
-	distantNeigbors int64
-	channels        int64
-	capacity        lightning.Satoshi
-	neighbors       []lightning.PubKey
+	Distance        int64
+	DistantNeigbors int64
+	Channels        int64
+	Capacity        lightning.Satoshi
+	Neighbors       []lightning.PubKey
 }
 
 // sortDistance sorts nodes by distance, distant neighbors, capacity, and channels
@@ -56,19 +55,19 @@ type sortDistance []RelativeNode
 
 // Less is true if i is closer than j.
 func (s sortDistance) Less(i, j int) bool {
-	if s[i].distance != s[j].distance {
-		return s[i].distance < s[j].distance
+	if s[i].Distance != s[j].Distance {
+		return s[i].Distance < s[j].Distance
 	}
 
-	if s[i].distantNeigbors != s[j].distantNeigbors {
-		return s[i].distantNeigbors < s[j].distantNeigbors
+	if s[i].DistantNeigbors != s[j].DistantNeigbors {
+		return s[i].DistantNeigbors < s[j].DistantNeigbors
 	}
 
-	if s[i].capacity != s[j].capacity {
-		return s[i].capacity < s[j].capacity
+	if s[i].Capacity != s[j].Capacity {
+		return s[i].Capacity < s[j].Capacity
 	}
 
-	return s[i].channels < s[j].channels
+	return s[i].Channels < s[j].Channels
 }
 
 // Swap nodes in slice.
@@ -122,9 +121,6 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 		return nil, err
 	}
 
-	fmt.Fprintf(os.Stderr, "network contains %d nodes total\n", len(channelGraph.Nodes))
-	fmt.Fprintf(os.Stderr, "filtering candidates by capacity: %d, channels: %d, distance: %d, distant neighbors: %d\n", request.MinCapacity, request.MinChannels, request.MinDistance, request.MinDistantNeighbors)
-
 	// initialize nodes map with static info
 	nodes := make(map[lightning.PubKey]*RelativeNode, len(channelGraph.Nodes))
 
@@ -136,23 +132,23 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 
 	// calculate node properties based on channels: neighbors, capacity, channels
 	for _, e := range channelGraph.Edges {
-		if nodes[e.Node1].neighbors != nil {
-			nodes[e.Node1].neighbors = append(nodes[e.Node1].neighbors, e.Node2)
+		if nodes[e.Node1].Neighbors != nil {
+			nodes[e.Node1].Neighbors = append(nodes[e.Node1].Neighbors, e.Node2)
 		} else {
-			nodes[e.Node1].neighbors = []lightning.PubKey{e.Node2}
+			nodes[e.Node1].Neighbors = []lightning.PubKey{e.Node2}
 		}
 
-		if nodes[e.Node2].neighbors != nil {
-			nodes[e.Node2].neighbors = append(nodes[e.Node2].neighbors, e.Node1)
+		if nodes[e.Node2].Neighbors != nil {
+			nodes[e.Node2].Neighbors = append(nodes[e.Node2].Neighbors, e.Node1)
 		} else {
-			nodes[e.Node2].neighbors = []lightning.PubKey{e.Node1}
+			nodes[e.Node2].Neighbors = []lightning.PubKey{e.Node1}
 		}
 
-		nodes[e.Node1].capacity += e.Capacity
-		nodes[e.Node2].capacity += e.Capacity
+		nodes[e.Node1].Capacity += e.Capacity
+		nodes[e.Node2].Capacity += e.Capacity
 
-		nodes[e.Node1].channels++
-		nodes[e.Node2].channels++
+		nodes[e.Node1].Channels++
+		nodes[e.Node2].Channels++
 	}
 
 	// Add assumes to root node
@@ -161,16 +157,16 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 			return []RelativeNode{}, errors.New("candidate node does not exist")
 		}
 
-		if nodes[request.PubKey].neighbors != nil {
-			nodes[request.PubKey].neighbors = append(nodes[request.PubKey].neighbors, c)
+		if nodes[request.PubKey].Neighbors != nil {
+			nodes[request.PubKey].Neighbors = append(nodes[request.PubKey].Neighbors, c)
 		} else {
-			nodes[request.PubKey].neighbors = []lightning.PubKey{c}
+			nodes[request.PubKey].Neighbors = []lightning.PubKey{c}
 		}
 
-		if nodes[c].neighbors != nil {
-			nodes[c].neighbors = append(nodes[c].neighbors, request.PubKey)
+		if nodes[c].Neighbors != nil {
+			nodes[c].Neighbors = append(nodes[c].Neighbors, request.PubKey)
 		} else {
-			nodes[c].neighbors = []lightning.PubKey{request.PubKey}
+			nodes[c].Neighbors = []lightning.PubKey{request.PubKey}
 		}
 	}
 
@@ -183,20 +179,20 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 	// initialize search from root node's neighbors
 	if n, ok := nodes[request.PubKey]; ok {
 		// root node has no distance to self
-		n.distance = 0
+		n.Distance = 0
 		// mark root as visited
 		visited[n.PubKey] = true
-		neighbors = n.neighbors
+		neighbors = n.Neighbors
 	}
 
 	for len(neighbors) > 0 {
 		next := make([]lightning.PubKey, 0)
 		for _, n := range neighbors {
 			if !visited[n] {
-				nodes[n].distance = distance
+				nodes[n].Distance = distance
 				visited[n] = true
 
-				for _, neighbor := range nodes[n].neighbors {
+				for _, neighbor := range nodes[n].Neighbors {
 					if !visited[neighbor] {
 						next = append(next, neighbor)
 					}
@@ -218,22 +214,22 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 	// calculate number of distant neighbors per node
 	for node := range unfilteredSpan {
 		var count int64
-		for _, neighbor := range unfilteredSpan[node].neighbors {
-			if nodes[neighbor].distance > distantNeighborLimit {
+		for _, neighbor := range unfilteredSpan[node].Neighbors {
+			if nodes[neighbor].Distance > distantNeighborLimit {
 				count++
 			}
 		}
 
-		unfilteredSpan[node].distantNeigbors = count
+		unfilteredSpan[node].DistantNeigbors = count
 	}
 
 	// filter nodes by request conditions
 	allCandidates := make([]RelativeNode, 0)
 	for _, v := range unfilteredSpan {
-		if v.capacity >= request.MinCapacity &&
-			v.channels >= request.MinChannels &&
-			v.distance >= request.MinDistance &&
-			v.distantNeigbors >= request.MinDistantNeighbors &&
+		if v.Capacity >= request.MinCapacity &&
+			v.Channels >= request.MinChannels &&
+			v.Distance >= request.MinDistance &&
+			v.DistantNeigbors >= request.MinDistantNeighbors &&
 			v.Updated.After(request.MinUpdated) {
 			if request.Clearnet {
 				if v.Clearnet() {
@@ -252,61 +248,66 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 		candidates = allCandidates[:request.Limit]
 	}
 
-	printNodes(candidates)
-
 	return candidates, nil
 }
 
 // Fees to encourage a balanced channel.
 //
-// Daemon mode continuously updates policies as channel liquidity changes.
-func (r Raiju) Fees(ctx context.Context, daemon bool) (map[lightning.ChannelID]lightning.FeePPM, error) {
+// Fees are initially set across all channels and then continuously updated as channel liquidity changes.
+func (r Raiju) Fees(ctx context.Context) (chan map[lightning.ChannelID]lightning.FeePPM, chan error, error) {
 	channels, err := r.l.ListChannels(ctx)
 	if err != nil {
-		return map[lightning.ChannelID]lightning.FeePPM{}, err
+		return nil, nil, err
 	}
 
-	updates, err := r.setFees(ctx, channels)
+	// buffer the channel for the first update
+	updates := make(chan map[lightning.ChannelID]lightning.FeePPM, 1)
+	errors := make(chan error)
+	// make sure updated at least once
+	u, err := r.setFees(ctx, channels)
 	if err != nil {
-		return map[lightning.ChannelID]lightning.FeePPM{}, err
+		return nil, nil, err
 	}
 
-	if daemon {
-		cc, ce, err := r.l.SubscribeChannelUpdates(ctx)
-		if err != nil {
-			return map[lightning.ChannelID]lightning.FeePPM{}, err
-		}
+	updates <- u
 
+	// listen for channel updates to keep fees in sync
+	cc, ce, err := r.l.SubscribeChannelUpdates(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	go func() {
 		for {
 			select {
 			case channels = <-cc:
-				_, err = r.setFees(ctx, channels)
+				u, err = r.setFees(ctx, channels)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "error setting fees %v\n", err)
+					errors <- fmt.Errorf("error setting fees: %w", err)
+				} else {
+					updates <- u
 				}
 			case err := <-ce:
-				fmt.Fprintf(os.Stderr, "error listening to channel updates %v\n", err)
+				errors <- fmt.Errorf("error listening to channel updates: %w", err)
 			}
 		}
-	}
+	}()
 
-	return updates, nil
+	return updates, errors, nil
 }
 
 // setFees on channels who's liquidity has changed, return updated channels and their new liquidity level.
 func (r Raiju) setFees(ctx context.Context, channels lightning.Channels) (map[lightning.ChannelID]lightning.FeePPM, error) {
-	updates := make(map[lightning.ChannelID]lightning.FeePPM)
+	updates := map[lightning.ChannelID]lightning.FeePPM{}
 	// update channel fees based on liquidity, but only change if necessary
 	for _, c := range channels {
 		fee := r.f.Fee(c)
 		if c.LocalFee != fee {
-			fmt.Fprintf(os.Stderr, "channel %s (%d) now has liquidity %g, setting fee to %g\n", c.RemoteNode.Alias, c.ChannelID, c.Liquidity(), fee)
 			err := r.l.SetFees(ctx, c.ChannelID, fee)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error updating fees %v\n", err)
-			} else {
-				updates[c.ChannelID] = fee
+				return map[lightning.ChannelID]lightning.FeePPM{}, err
 			}
+			updates[c.ChannelID] = fee
 		}
 	}
 
@@ -331,37 +332,33 @@ func (r Raiju) Rebalance(ctx context.Context, outChannelID lightning.ChannelID, 
 	var totalFeePaid lightning.Satoshi
 
 	for percentRebalanced < maxPercent {
-		fmt.Fprintf(os.Stderr, "attempting rebalance %d sats out of %s (%d) to %s with a %g max fee ppm...\n", amount, c.RemoteNode.Alias, outChannelID, lastHopPubKey, maxFee)
 		// create and pay invoice
 		invoice, err := r.l.AddInvoice(ctx, lightning.Satoshi(amount))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "rebalance failed\n")
-			return percentRebalanced, totalFeePaid, nil
+			return 0, 0, fmt.Errorf("error creating circular rebalance invoice: %w", err)
 		}
 		feePaid, err := r.l.SendPayment(ctx, invoice, outChannelID, lastHopPubKey, maxFee)
+		// not expecting rebalance payments to work all that often, so just short circuit and return what has been done
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "rebalance failed\n")
 			return percentRebalanced, totalFeePaid, nil
 		}
-		fmt.Fprintf(os.Stderr, "rebalance success %d sats out of %s (%d) to %s for a %d sats fee\n", amount, c.RemoteNode.Alias, outChannelID, lastHopPubKey, feePaid)
 		percentRebalanced += stepPercent
 		totalFeePaid += feePaid
-		fmt.Fprintf(os.Stderr, "rebalance has moved %f percent of max %f percent of the channel capacity\n", percentRebalanced, maxPercent)
 	}
 
 	return percentRebalanced, totalFeePaid, nil
 }
 
-// RebalanceAll channels.
-func (r Raiju) RebalanceAll(ctx context.Context, stepPercent float64, maxPercent float64, maxFee lightning.FeePPM) error {
+// RebalanceAll high local liquidity channels into low liquidity channels, return percent rebalanced per channel attempted.
+func (r Raiju) RebalanceAll(ctx context.Context, stepPercent float64, maxPercent float64, maxFee lightning.FeePPM) (map[lightning.ChannelID]float64, error) {
 	local, err := r.l.GetInfo(ctx)
 	if err != nil {
-		return err
+		return map[lightning.ChannelID]float64{}, err
 	}
 
 	channels, err := r.l.ListChannels(ctx)
 	if err != nil {
-		return err
+		return map[lightning.ChannelID]float64{}, err
 	}
 
 	hlcs, llcs := r.f.RebalanceChannels(channels)
@@ -372,10 +369,10 @@ func (r Raiju) RebalanceAll(ctx context.Context, stepPercent float64, maxPercent
 	})
 
 	var totalFeePaid lightning.Satoshi
+	rebalanced := map[lightning.ChannelID]float64{}
 
 	// Roll through high liquidity channels and try to push things through the low liquidity ones.
 	for _, h := range hlcs {
-		fmt.Fprintf(os.Stderr, "channel %d with %s has high liquidity, attempting to rebalancing into low liquidity channels\n", h.ChannelID, h.RemoteNode.Alias)
 		percentRebalanced := float64(0)
 
 		// reshuffle low liquidity channels each time
@@ -393,24 +390,23 @@ func (r Raiju) RebalanceAll(ctx context.Context, stepPercent float64, maxPercent
 			// to rebalance and then a standard payment cancels out the liquidity
 			ul, err := r.l.GetChannel(ctx, l.ChannelID)
 			if err != nil {
-				return err
+				return map[lightning.ChannelID]float64{}, err
 			}
 			potentialLocal := lightning.Satoshi(float64(h.Capacity) * maxPercent)
 			if r.f.PotentialFee(ul, potentialLocal) != r.f.Fee(ul) {
-				// don't really care if error or not, just continue on
-				p, f, _ := r.Rebalance(ctx, h.ChannelID, lastHopPubkey, stepPercent, (maxPercent - percentRebalanced), maxFee)
+				p, f, err := r.Rebalance(ctx, h.ChannelID, lastHopPubkey, stepPercent, (maxPercent - percentRebalanced), maxFee)
+				if err != nil {
+					return map[lightning.ChannelID]float64{}, err
+				}
+
 				percentRebalanced += p
 				totalFeePaid += f
-			} else {
-				fmt.Fprintf(os.Stderr, "channel %d with %s would no longer have low liquidity, skipping\n", ul.ChannelID, ul.RemoteNode.Alias)
 			}
 		}
-		fmt.Fprintf(os.Stderr, "rebalanced %f percent of channel %d with %s\n", percentRebalanced, h.ChannelID, h.RemoteNode.Alias)
+		rebalanced[h.ChannelID] = percentRebalanced
 	}
 
-	fmt.Fprintf(os.Stderr, "rebalanced channels paying a total fee of %d sats\n", totalFeePaid)
-
-	return nil
+	return rebalanced, nil
 }
 
 // Reaper calculates inefficient channels which should be closed.
@@ -443,8 +439,6 @@ func (r Raiju) Reaper(ctx context.Context) (lightning.Channels, error) {
 			inefficient = append(inefficient, c)
 		}
 	}
-
-	printChannels(inefficient)
 
 	return inefficient, nil
 }

@@ -138,9 +138,9 @@ func TestLiquidityFees_Fee(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			lf := LiquidityFees{
-				thresholds: tt.fields.thresholds,
-				fees:       tt.fields.fees,
-				stickiness: tt.fields.stickiness,
+				Thresholds: tt.fields.thresholds,
+				Fees:       tt.fields.fees,
+				Stickiness: tt.fields.stickiness,
 			}
 			if got := lf.Fee(tt.args.channel); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("LiquidityFees.Fee() = %v, want %v", got, tt.want)
@@ -198,9 +198,9 @@ func TestLiquidityFees_PotentialFee(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			lf := LiquidityFees{
-				thresholds: tt.fields.thresholds,
-				fees:       tt.fields.fees,
-				stickiness: tt.fields.stickiness,
+				Thresholds: tt.fields.thresholds,
+				Fees:       tt.fields.fees,
+				Stickiness: tt.fields.stickiness,
 			}
 			if got := lf.PotentialFee(tt.args.channel, tt.args.additionalLocal); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("LiquidityFees.PotentialFee() = %v, want %v", got, tt.want)
@@ -330,9 +330,9 @@ func TestLiquidityFees_RebalanceChannels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			lf := LiquidityFees{
-				thresholds: tt.fields.thresholds,
-				fees:       tt.fields.fees,
-				stickiness: tt.fields.stickiness,
+				Thresholds: tt.fields.thresholds,
+				Fees:       tt.fields.fees,
+				Stickiness: tt.fields.stickiness,
 			}
 			gotHigh, gotLow := lf.RebalanceChannels(tt.args.channels)
 			if !reflect.DeepEqual(gotHigh, tt.wantHigh) {
@@ -369,9 +369,9 @@ func TestLiquidityFees_RebalanceFee(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			lf := LiquidityFees{
-				thresholds: tt.fields.thresholds,
-				fees:       tt.fields.fees,
-				stickiness: tt.fields.stickiness,
+				Thresholds: tt.fields.thresholds,
+				Fees:       tt.fields.fees,
+				Stickiness: tt.fields.stickiness,
 			}
 			if got := lf.RebalanceFee(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("LiquidityFees.RebalanceFee() = %v, want %v", got, tt.want)
@@ -400,9 +400,9 @@ func TestNewLiquidityFees(t *testing.T) {
 				stickiness: 0,
 			},
 			want: LiquidityFees{
-				thresholds: []float64{80, 20},
-				fees:       []lightning.FeePPM{5, 50, 500},
-				stickiness: 0,
+				Thresholds: []float64{80, 20},
+				Fees:       []lightning.FeePPM{5, 50, 500},
+				Stickiness: 0,
 			},
 			wantErr: false,
 		},
@@ -444,30 +444,6 @@ func TestNewLiquidityFees(t *testing.T) {
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewLiquidityFees() = %v, want %v", got, tt.want)
 			}
-		})
-	}
-}
-
-func TestLiquidityFees_PrintSettings(t *testing.T) {
-	type fields struct {
-		thresholds []float64
-		fees       []lightning.FeePPM
-		stickiness float64
-	}
-	tests := []struct {
-		name   string
-		fields fields
-	}{
-		// No tests
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(_ *testing.T) {
-			lf := LiquidityFees{
-				thresholds: tt.fields.thresholds,
-				fees:       tt.fields.fees,
-				stickiness: tt.fields.stickiness,
-			}
-			lf.PrintSettings()
 		})
 	}
 }

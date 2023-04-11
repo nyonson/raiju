@@ -19,6 +19,7 @@ import (
 	"github.com/nyonson/raiju"
 	"github.com/nyonson/raiju/lightning"
 	"github.com/nyonson/raiju/lnd"
+	"github.com/nyonson/raiju/view"
 )
 
 const (
@@ -143,9 +144,16 @@ func main() {
 				Clearnet:            *clearnet,
 			}
 
-			_, err = r.Candidates(ctx, request)
+			cmdLog.Printf("filtering candidates by capacity: %d, channels: %d, distance: %d, distant neighbors: %d\n", request.MinCapacity, request.MinChannels, request.MinDistance, request.MinDistantNeighbors)
 
-			return err
+			candidates, err := r.Candidates(ctx, request)
+			if err != nil {
+				return err
+			}
+
+			view.PrintNodes(candidates)
+
+			return nil
 		},
 	}
 
@@ -182,13 +190,30 @@ func main() {
 				return err
 			}
 
-			f.PrintSettings()
+			view.PrintFees(f)
 
 			r := raiju.New(c, f)
 
-			_, err = r.Fees(ctx, *daemon)
+			uc, ec, err := r.Fees(ctx)
+			if err != nil {
+				return err
+			}
 
-			return err
+			// listen for updates
+			if *daemon {
+				for {
+					select {
+					case u := <-uc:
+						for id, fee := range u {
+							cmdLog.Printf("channel %d updated to %f fee PPM", id, fee)
+						}
+					case err := <-ec:
+						return err
+					}
+				}
+			}
+
+			return nil
 		},
 	}
 
@@ -241,7 +266,7 @@ func main() {
 				return err
 			}
 
-			f.PrintSettings()
+			view.PrintFees(f)
 
 			r := raiju.New(c, f)
 
@@ -252,12 +277,24 @@ func main() {
 			}
 
 			if *lastHopPubkey != "" {
-				_, _, err = r.Rebalance(ctx, lightning.ChannelID(*outChannelID), lightning.PubKey(*lastHopPubkey), stepPercent, maxPercent, maxFee)
+				cmdLog.Println("Rebalancing channel...")
+				percent, fee, err := r.Rebalance(ctx, lightning.ChannelID(*outChannelID), lightning.PubKey(*lastHopPubkey), stepPercent, maxPercent, maxFee)
+				if err != nil {
+					return err
+				}
+				cmdLog.Printf("rebalanced %f percent with a %d sat fee\n", percent, fee)
 			} else {
-				err = r.RebalanceAll(ctx, stepPercent, maxPercent, maxFee)
+				cmdLog.Println("Rebalancing all channels...")
+				rebalanced, err := r.RebalanceAll(ctx, stepPercent, maxPercent, maxFee)
+				if err != nil {
+					return err
+				}
+				for id, percent := range rebalanced {
+					cmdLog.Printf("rebalanced %f percent of channel %d\n", percent, id)
+				}
 			}
 
-			return err
+			return nil
 		},
 	}
 
@@ -295,9 +332,14 @@ func main() {
 
 			r := raiju.New(c, f)
 
-			_, err = r.Reaper(ctx)
+			channels, err := r.Reaper(ctx)
+			if err != nil {
+				return err
+			}
 
-			return err
+			view.PrintChannels(channels)
+
+			return nil
 		},
 	}
 

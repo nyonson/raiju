@@ -144,11 +144,11 @@ func TestRaiju_Candidates(t *testing.T) {
 						Updated:   updated,
 						Addresses: []string{clearnetAddress},
 					},
-					distance:        3,
-					distantNeigbors: 0,
-					channels:        1,
-					capacity:        1,
-					neighbors:       []lightning.PubKey{pubKeyC},
+					Distance:        3,
+					DistantNeigbors: 0,
+					Channels:        1,
+					Capacity:        1,
+					Neighbors:       []lightning.PubKey{pubKeyC},
 				},
 				{
 					Node: lightning.Node{
@@ -157,11 +157,11 @@ func TestRaiju_Candidates(t *testing.T) {
 						Updated:   updated,
 						Addresses: []string{clearnetAddress},
 					},
-					distance:        2,
-					distantNeigbors: 1,
-					channels:        2,
-					capacity:        2,
-					neighbors:       []lightning.PubKey{pubKeyB, pubKeyD},
+					Distance:        2,
+					DistantNeigbors: 1,
+					Channels:        2,
+					Capacity:        2,
+					Neighbors:       []lightning.PubKey{pubKeyB, pubKeyD},
 				},
 			},
 			wantErr: false,
@@ -279,11 +279,11 @@ func TestRaiju_Candidates(t *testing.T) {
 						Updated:   updated,
 						Addresses: []string{clearnetAddress},
 					},
-					distance:        3,
-					distantNeigbors: 0,
-					channels:        2,
-					capacity:        2,
-					neighbors:       []lightning.PubKey{pubKeyC, pubKeyE},
+					Distance:        3,
+					DistantNeigbors: 0,
+					Channels:        2,
+					Capacity:        2,
+					Neighbors:       []lightning.PubKey{pubKeyC, pubKeyE},
 				},
 			},
 			wantErr: false,
@@ -327,11 +327,11 @@ func Test_sortDistance_Less(t *testing.T) {
 						Updated:   updated,
 						Addresses: []string{},
 					},
-					distance:        0,
-					distantNeigbors: 0,
-					channels:        0,
-					capacity:        0,
-					neighbors:       []lightning.PubKey{},
+					Distance:        0,
+					DistantNeigbors: 0,
+					Channels:        0,
+					Capacity:        0,
+					Neighbors:       []lightning.PubKey{},
 				},
 				{
 					Node: lightning.Node{
@@ -340,11 +340,11 @@ func Test_sortDistance_Less(t *testing.T) {
 						Updated:   updated,
 						Addresses: []string{},
 					},
-					distance:        1,
-					distantNeigbors: 0,
-					channels:        0,
-					capacity:        0,
-					neighbors:       []lightning.PubKey{},
+					Distance:        1,
+					DistantNeigbors: 0,
+					Channels:        0,
+					Capacity:        0,
+					Neighbors:       []lightning.PubKey{},
 				},
 			},
 
@@ -364,11 +364,11 @@ func Test_sortDistance_Less(t *testing.T) {
 						Updated:   updated,
 						Addresses: []string{},
 					},
-					distance:        1,
-					distantNeigbors: 0,
-					channels:        0,
-					capacity:        0,
-					neighbors:       []lightning.PubKey{},
+					Distance:        1,
+					DistantNeigbors: 0,
+					Channels:        0,
+					Capacity:        0,
+					Neighbors:       []lightning.PubKey{},
 				},
 				{
 					Node: lightning.Node{
@@ -377,11 +377,11 @@ func Test_sortDistance_Less(t *testing.T) {
 						Updated:   updated,
 						Addresses: []string{},
 					},
-					distance:        1,
-					distantNeigbors: 1,
-					channels:        0,
-					capacity:        0,
-					neighbors:       []lightning.PubKey{},
+					Distance:        1,
+					DistantNeigbors: 1,
+					Channels:        0,
+					Capacity:        0,
+					Neighbors:       []lightning.PubKey{},
 				},
 			},
 
@@ -401,11 +401,11 @@ func Test_sortDistance_Less(t *testing.T) {
 						Updated:   updated,
 						Addresses: []string{},
 					},
-					distance:        1,
-					distantNeigbors: 1,
-					channels:        0,
-					capacity:        0,
-					neighbors:       []lightning.PubKey{},
+					Distance:        1,
+					DistantNeigbors: 1,
+					Channels:        0,
+					Capacity:        0,
+					Neighbors:       []lightning.PubKey{},
 				},
 				{
 					Node: lightning.Node{
@@ -414,11 +414,11 @@ func Test_sortDistance_Less(t *testing.T) {
 						Updated:   updated,
 						Addresses: []string{},
 					},
-					distance:        1,
-					distantNeigbors: 1,
-					channels:        0,
-					capacity:        1,
-					neighbors:       []lightning.PubKey{},
+					Distance:        1,
+					DistantNeigbors: 1,
+					Channels:        0,
+					Capacity:        1,
+					Neighbors:       []lightning.PubKey{},
 				},
 			},
 
@@ -438,11 +438,11 @@ func Test_sortDistance_Less(t *testing.T) {
 						Updated:   updated,
 						Addresses: []string{},
 					},
-					distance:        1,
-					distantNeigbors: 1,
-					channels:        0,
-					capacity:        1,
-					neighbors:       []lightning.PubKey{},
+					Distance:        1,
+					DistantNeigbors: 1,
+					Channels:        0,
+					Capacity:        1,
+					Neighbors:       []lightning.PubKey{},
 				},
 				{
 					Node: lightning.Node{
@@ -451,11 +451,11 @@ func Test_sortDistance_Less(t *testing.T) {
 						Updated:   updated,
 						Addresses: []string{},
 					},
-					distance:        1,
-					distantNeigbors: 1,
-					channels:        1,
-					capacity:        1,
-					neighbors:       []lightning.PubKey{},
+					Distance:        1,
+					DistantNeigbors: 1,
+					Channels:        1,
+					Capacity:        1,
+					Neighbors:       []lightning.PubKey{},
 				},
 			},
 
@@ -475,11 +475,11 @@ func Test_sortDistance_Less(t *testing.T) {
 						Updated:   updated,
 						Addresses: []string{},
 					},
-					distance:        0,
-					distantNeigbors: 0,
-					channels:        0,
-					capacity:        0,
-					neighbors:       []lightning.PubKey{},
+					Distance:        0,
+					DistantNeigbors: 0,
+					Channels:        0,
+					Capacity:        0,
+					Neighbors:       []lightning.PubKey{},
 				},
 				{
 					Node: lightning.Node{
@@ -488,11 +488,11 @@ func Test_sortDistance_Less(t *testing.T) {
 						Updated:   updated,
 						Addresses: []string{},
 					},
-					distance:        0,
-					distantNeigbors: 0,
-					channels:        0,
-					capacity:        0,
-					neighbors:       []lightning.PubKey{},
+					Distance:        0,
+					DistantNeigbors: 0,
+					Channels:        0,
+					Capacity:        0,
+					Neighbors:       []lightning.PubKey{},
 				},
 			},
 
@@ -527,19 +527,19 @@ func Test_sortDistance_Swap(t *testing.T) {
 			s: []RelativeNode{
 				{
 					Node:            lightning.Node{},
-					distance:        0,
-					distantNeigbors: 0,
-					channels:        0,
-					capacity:        0,
-					neighbors:       []lightning.PubKey{},
+					Distance:        0,
+					DistantNeigbors: 0,
+					Channels:        0,
+					Capacity:        0,
+					Neighbors:       []lightning.PubKey{},
 				},
 				{
 					Node:            lightning.Node{},
-					distance:        0,
-					distantNeigbors: 0,
-					channels:        0,
-					capacity:        0,
-					neighbors:       []lightning.PubKey{},
+					Distance:        0,
+					DistantNeigbors: 0,
+					Channels:        0,
+					Capacity:        0,
+					Neighbors:       []lightning.PubKey{},
 				},
 			},
 			args: args{
@@ -571,11 +571,11 @@ func Test_sortDistance_Len(t *testing.T) {
 						Updated:   updated,
 						Addresses: []string{},
 					},
-					distance:        0,
-					distantNeigbors: 0,
-					channels:        0,
-					capacity:        0,
-					neighbors:       []lightning.PubKey{},
+					Distance:        0,
+					DistantNeigbors: 0,
+					Channels:        0,
+					Capacity:        0,
+					Neighbors:       []lightning.PubKey{},
 				},
 			},
 			want: 1,
@@ -718,10 +718,11 @@ func TestRaiju_RebalanceAll(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
+		want    map[lightning.ChannelID]float64
 		wantErr bool
 	}{
 		{
-			name: "happy rebalance all",
+			name: "rebalance all only one channel",
 			fields: fields{
 				l: &lightningerMock{
 					AddInvoiceFunc: func(ctx context.Context, amount lightning.Satoshi) (lightning.Invoice, error) {
@@ -754,6 +755,7 @@ func TestRaiju_RebalanceAll(t *testing.T) {
 				maxPercent:  5,
 				maxFee:      10,
 			},
+			want:    map[lightning.ChannelID]float64{},
 			wantErr: false,
 		},
 	}
@@ -762,8 +764,12 @@ func TestRaiju_RebalanceAll(t *testing.T) {
 			r := Raiju{
 				l: tt.fields.l,
 			}
-			if err := r.RebalanceAll(tt.args.ctx, tt.args.stepPercent, tt.args.maxPercent, tt.args.maxFee); (err != nil) != tt.wantErr {
+			got, err := r.RebalanceAll(tt.args.ctx, tt.args.stepPercent, tt.args.maxPercent, tt.args.maxFee)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Raiju.RebalanceAll() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Raiju.RebalanceAll() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -848,8 +854,7 @@ func TestRaiju_Fees(t *testing.T) {
 		f LiquidityFees
 	}
 	type args struct {
-		ctx    context.Context
-		daemon bool
+		ctx context.Context
 	}
 	tests := []struct {
 		name    string
@@ -905,12 +910,12 @@ func TestRaiju_Fees(t *testing.T) {
 					},
 				},
 				f: LiquidityFees{
-					thresholds: []float64{80, 20},
-					fees:       []lightning.FeePPM{5, 10, 100},
+					Thresholds: []float64{80, 20},
+					Fees:       []lightning.FeePPM{5, 10, 100},
 				},
 			},
 			args: args{
-				daemon: false,
+				ctx: context.Background(),
 			},
 			want: map[lightning.ChannelID]lightning.FeePPM{
 				lightning.ChannelID(1): lightning.FeePPM(100),
@@ -924,13 +929,21 @@ func TestRaiju_Fees(t *testing.T) {
 				l: tt.fields.l,
 				f: tt.fields.f,
 			}
-			got, err := r.Fees(tt.args.ctx, tt.args.daemon)
+
+			uc, ec, err := r.Fees(tt.args.ctx)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Raiju.Fees() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Raiju.Fees() = %v, want %v", got, tt.want)
+
+			select {
+			case got := <-uc:
+				if !reflect.DeepEqual(got, tt.want) {
+					t.Errorf("Raiju.Fees() = %v, want %v", got, tt.want)
+				}
+			case err := <-ec:
+				t.Errorf("Raiju.Fees() error = %v, wantErr %v", err, tt.wantErr)
+				return
 			}
 		})
 	}
@@ -951,15 +964,15 @@ func TestNew(t *testing.T) {
 			args: args{
 				l: nil,
 				r: LiquidityFees{
-					thresholds: []float64{80, 20},
-					fees:       []lightning.FeePPM{},
+					Thresholds: []float64{80, 20},
+					Fees:       []lightning.FeePPM{},
 				},
 			},
 			want: Raiju{
 				l: nil,
 				f: LiquidityFees{
-					thresholds: []float64{80, 20},
-					fees:       []lightning.FeePPM{},
+					Thresholds: []float64{80, 20},
+					Fees:       []lightning.FeePPM{},
 				},
 			},
 		},
