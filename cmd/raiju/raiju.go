@@ -53,8 +53,6 @@ func parseFees(thresholds string, fees string, stickiness float64) (raiju.Liquid
 		return raiju.LiquidityFees{}, err
 	}
 
-	lf.PrintSettings()
-
 	return lf, nil
 }
 
@@ -184,6 +182,8 @@ func main() {
 				return err
 			}
 
+			f.PrintSettings()
+
 			r := raiju.New(c, f)
 
 			_, err = r.Fees(ctx, *daemon)
@@ -240,6 +240,8 @@ func main() {
 			if err != nil {
 				return err
 			}
+
+			f.PrintSettings()
 
 			r := raiju.New(c, f)
 
