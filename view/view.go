@@ -10,15 +10,17 @@ import (
 )
 
 func ViewCandidates(ctx context.Context, r raiju.Raiju) (*tview.Flex, error) {
-	flex := tview.NewFlex()
+	container := tview.NewFlex()
+	controls := tview.NewFlex()
 
 	table := tview.NewTable().SetSelectable(true, false)
 	table.SetBorder(true).SetTitle("Candidates")
 
 	button := tview.NewButton("Filter")
+	controls.AddItem(button, 0, 1, false)
 
-	flex.AddItem(table, 0, 4, false)
-	flex.AddItem(button, 0, 1, true)
+	container.AddItem(table, 0, 4, false)
+	container.AddItem(controls, 0, 1, true)
 
 	request := raiju.CandidatesRequest{
 		MinCapacity:         1000000,
@@ -52,5 +54,5 @@ func ViewCandidates(ctx context.Context, r raiju.Raiju) (*tview.Flex, error) {
 		row++
 	}
 
-	return flex, nil
+	return container, nil
 }
