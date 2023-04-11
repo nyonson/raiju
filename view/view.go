@@ -15,7 +15,7 @@ func ViewCandidates(ctx context.Context, r raiju.Raiju) (*tview.Flex, error) {
 	table := tview.NewTable().SetSelectable(true, false)
 	table.SetBorder(true).SetTitle("Candidates")
 
-	button := tview.NewButton("Refresh")
+	button := tview.NewButton("Filter")
 
 	flex.AddItem(table, 0, 4, false)
 	flex.AddItem(button, 0, 1, true)
@@ -35,16 +35,20 @@ func ViewCandidates(ctx context.Context, r raiju.Raiju) (*tview.Flex, error) {
 	}
 
 	// headers
+	// would like to show aliases, but double width emoji are the worst
+	// tview might handle it better if this gets in: https://github.com/mattn/go-runewidth/pull/63
 	table.SetCellSimple(0, 0, "PubKey")
-	table.SetCellSimple(0, 2, "Distance")
-	table.SetCellSimple(0, 3, "Distant Neighbors")
+	table.SetCellSimple(0, 1, "Distance")
+	table.SetCellSimple(0, 2, "Distant Neighbors")
+	// always show header row
+	table.SetFixed(1, 0)
 
 	// content
 	row := 1
 	for _, n := range nodes {
 		table.SetCellSimple(row, 0, string(n.PubKey))
-		table.SetCellSimple(row, 2, strconv.FormatInt(n.Distance, 10))
-		table.SetCellSimple(row, 3, strconv.FormatInt(n.DistantNeigbors, 10))
+		table.SetCellSimple(row, 1, strconv.FormatInt(n.Distance, 10))
+		table.SetCellSimple(row, 2, strconv.FormatInt(n.DistantNeigbors, 10))
 		row++
 	}
 

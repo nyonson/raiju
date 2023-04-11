@@ -374,7 +374,7 @@ func main() {
 
 			r := raiju.New(c, f)
 
-			app := tview.NewApplication()
+			app := tview.NewApplication().EnableMouse(true)
 			flex := tview.NewFlex()
 			flex.SetBorder(true).SetTitle("raiju")
 			app.SetRoot(flex, true)
