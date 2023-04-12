@@ -375,16 +375,23 @@ func main() {
 			r := raiju.New(c, f)
 
 			app := tview.NewApplication().EnableMouse(true)
-			flex := tview.NewFlex()
+			// "column"
+			flex := tview.NewFlex().SetDirection(0)
 			flex.SetBorder(true).SetTitle("raiju")
 			app.SetRoot(flex, true)
 
-			view, err := view.ViewCandidates(ctx, r)
+			viewChannels, err := view.ViewChannels(ctx, r)
 			if err != nil {
 				return err
 			}
 
-			flex.AddItem(view, 0, 1, true)
+			viewCandidates, err := view.ViewCandidates(ctx, r)
+			if err != nil {
+				return err
+			}
+
+			flex.AddItem(viewChannels, 0, 3, true)
+			flex.AddItem(viewCandidates, 0, 1, true)
 
 			if err := app.Run(); err != nil {
 				return err

@@ -6,26 +6,32 @@ import (
 	"time"
 
 	"github.com/nyonson/raiju"
+	"github.com/nyonson/raiju/lightning"
 	"github.com/rivo/tview"
 )
 
 func ViewCandidates(ctx context.Context, r raiju.Raiju) (*tview.Flex, error) {
 	container := tview.NewFlex()
+	container.SetBorder(true).SetTitle("Candidates")
 
 	table := tview.NewTable().SetSelectable(true, false)
-	table.SetBorder(true).SetTitle("Candidates")
 
 	form := tview.NewForm().
-		AddInputField("Min Distance", "2", 4, nil, nil).
-		AddInputField("Min Distant Neighbors", "0", 4, nil, nil)
+		AddInputField("Capacity", "10000000", 12, nil, nil).
+		AddInputField("Distance", "2", 4, nil, nil).
+		AddInputField("Distant Neighbors", "0", 4, nil, nil)
 
-	form.AddButton("Candidates", func() {
+	form.SetBorder(true).SetTitle("Min Filters")
+
+	form.AddButton("Refresh", func() {
 		table.Clear()
 
-		minDistance, _ := strconv.Atoi(form.GetFormItem(0).(*tview.InputField).GetText())
-		minDistantNeighbors, _ := strconv.Atoi(form.GetFormItem(1).(*tview.InputField).GetText())
+		minCapacity, _ := strconv.Atoi(form.GetFormItem(0).(*tview.InputField).GetText())
+		minDistance, _ := strconv.Atoi(form.GetFormItem(1).(*tview.InputField).GetText())
+		minDistantNeighbors, _ := strconv.Atoi(form.GetFormItem(2).(*tview.InputField).GetText())
+
 		request := raiju.CandidatesRequest{
-			MinCapacity:         1000000,
+			MinCapacity:         lightning.Satoshi(minCapacity),
 			MinChannels:         1,
 			MinDistance:         int64(minDistance),
 			MinDistantNeighbors: int64(minDistantNeighbors),
@@ -59,8 +65,15 @@ func ViewCandidates(ctx context.Context, r raiju.Raiju) (*tview.Flex, error) {
 		table.ScrollToBeginning()
 	})
 
+	container.AddItem(form, 36, 1, true)
 	container.AddItem(table, 0, 4, false)
-	container.AddItem(form, 0, 1, true)
+
+	return container, nil
+}
+
+func ViewChannels(ctx context.Context, r raiju.Raiju) (*tview.Flex, error) {
+	container := tview.NewFlex()
+	container.SetBorder(true).SetTitle("Channels")
 
 	return container, nil
 }
