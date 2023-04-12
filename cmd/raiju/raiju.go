@@ -345,8 +345,10 @@ func main() {
 	}
 
 	root := &ffcli.Command{
-		ShortUsage:  "raiju [global flags] <subcommand> [subcommand flags] [subcommand args]",
+		ShortUsage:  "raiju [global flags] [subcommand] [subcommand flags] [subcommand args]",
 		FlagSet:     rootFlagSet,
+		ShortHelp:   "Interactive dashboard",
+		LongHelp:    "If given no subcommand, fire up an interactive dashboard that uses the subcommands under the hood.",
 		Subcommands: []*ffcli.Command{candidatesCmd, feesCmd, rebalanceCmd, reaperCmd},
 		Options:     []ff.Option{ff.WithEnvVarPrefix("RAIJU"), ff.WithConfigFileFlag("config"), ff.WithConfigFileParser(ff.PlainParser), ff.WithAllowMissingConfigFile(true)},
 		Exec: func(ctx context.Context, args []string) error {
