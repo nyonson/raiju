@@ -350,7 +350,7 @@ func (r Raiju) Rebalance(ctx context.Context, outChannelID lightning.ChannelID, 
 }
 
 // RebalanceAll high local liquidity channels into low liquidity channels, return percent rebalanced per channel attempted.
-func (r Raiju) RebalanceAll(ctx context.Context, stepPercent float64, maxPercent float64, maxFee lightning.FeePPM) (map[lightning.ChannelID]float64, error) {
+func (r Raiju) RebalanceAll(ctx context.Context, stepPercent float64, maxPercent float64) (map[lightning.ChannelID]float64, error) {
 	local, err := r.l.GetInfo(ctx)
 	if err != nil {
 		return map[lightning.ChannelID]float64{}, err
@@ -394,7 +394,7 @@ func (r Raiju) RebalanceAll(ctx context.Context, stepPercent float64, maxPercent
 			}
 			potentialLocal := lightning.Satoshi(float64(h.Capacity) * maxPercent)
 			if r.f.PotentialFee(ul, potentialLocal) != r.f.Fee(ul) {
-				p, f, err := r.Rebalance(ctx, h.ChannelID, lastHopPubkey, stepPercent, (maxPercent - percentRebalanced), maxFee)
+				p, f, err := r.Rebalance(ctx, h.ChannelID, lastHopPubkey, stepPercent, (maxPercent - percentRebalanced), r.f.RebalanceFee())
 				if err != nil {
 					return map[lightning.ChannelID]float64{}, err
 				}

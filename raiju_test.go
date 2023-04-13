@@ -712,7 +712,6 @@ func TestRaiju_RebalanceAll(t *testing.T) {
 		ctx         context.Context
 		stepPercent float64
 		maxPercent  float64
-		maxFee      lightning.FeePPM
 	}
 	tests := []struct {
 		name    string
@@ -753,7 +752,6 @@ func TestRaiju_RebalanceAll(t *testing.T) {
 			args: args{
 				stepPercent: 1,
 				maxPercent:  5,
-				maxFee:      10,
 			},
 			want:    map[lightning.ChannelID]float64{},
 			wantErr: false,
@@ -764,7 +762,7 @@ func TestRaiju_RebalanceAll(t *testing.T) {
 			r := Raiju{
 				l: tt.fields.l,
 			}
-			got, err := r.RebalanceAll(tt.args.ctx, tt.args.stepPercent, tt.args.maxPercent, tt.args.maxFee)
+			got, err := r.RebalanceAll(tt.args.ctx, tt.args.stepPercent, tt.args.maxPercent)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Raiju.RebalanceAll() error = %v, wantErr %v", err, tt.wantErr)
 			}

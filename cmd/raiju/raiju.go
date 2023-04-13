@@ -286,7 +286,7 @@ func main() {
 				cmdLog.Printf("rebalanced %f percent with a %d sat fee\n", percent, fee)
 			} else {
 				cmdLog.Println("Rebalancing all channels...")
-				rebalanced, err := r.RebalanceAll(ctx, stepPercent, maxPercent, maxFee)
+				rebalanced, err := r.RebalanceAll(ctx, stepPercent, maxPercent)
 				if err != nil {
 					return err
 				}

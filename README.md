@@ -24,7 +24,7 @@
 
 # dashboard
 
-`raiju`'s root command, `raiju`, fires up an interactive TUI dashboard.
+`raiju`'s root command, `raiju`, fires up an interactive TUI dashboard which uses the subcommands under the hood.
 
 # subcommands 
 
