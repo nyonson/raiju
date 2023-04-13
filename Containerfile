@@ -32,5 +32,5 @@ COPY --from=builder /build/raiju .
 # Signal that this container is meant to just run the raiju executable
 ENTRYPOINT ["/raiju"]
 
-# Default to running help
-CMD ["/raiju", "-h"]
+# Default to running dashboard
+CMD ["/raiju"]
