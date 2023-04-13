@@ -182,7 +182,7 @@ func (l Lnd) GetChannel(ctx context.Context, channelID lightning.ChannelID) (lig
 
 // ListChannels of local node.
 func (l Lnd) ListChannels(ctx context.Context) (lightning.Channels, error) {
-	channelInfos, err := l.c.ListChannels(ctx, true, true)
+	channelInfos, err := l.c.ListChannels(ctx, false, false)
 	if err != nil {
 		return nil, err
 	}
