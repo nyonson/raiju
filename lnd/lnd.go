@@ -250,7 +250,7 @@ func (l Lnd) SetFees(ctx context.Context, channelID lightning.ChannelID, fee lig
 	req := lndclient.PolicyUpdateRequest{
 		BaseFeeMsat:   0,
 		FeeRate:       fee.Rate(),
-		TimeLockDelta: 40,
+		TimeLockDelta: 80,
 	}
 	return l.c.UpdateChanPolicy(ctx, req, outpoint)
 }
