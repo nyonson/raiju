@@ -302,7 +302,7 @@ func (r Raiju) setFees(ctx context.Context, channels lightning.Channels) (map[li
 	// update channel fees based on liquidity, but only change if necessary
 	for _, c := range channels {
 		fee := r.f.Fee(c)
-		if c.LocalFee != fee {
+		if c.LocalFee != fee && !c.Private {
 			err := r.l.SetFees(ctx, c.ChannelID, fee)
 			if err != nil {
 				return map[lightning.ChannelID]lightning.FeePPM{}, err

@@ -84,6 +84,7 @@ type Channel struct {
 	LocalFee      FeePPM
 	RemoteBalance Satoshi
 	RemoteNode    Node
+	Private       bool
 }
 
 // Liquidity percent of the channel that is local.

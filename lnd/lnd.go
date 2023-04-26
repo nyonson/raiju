@@ -174,6 +174,7 @@ func (l Lnd) GetChannel(ctx context.Context, channelID lightning.ChannelID) (lig
 		if lightning.ChannelID(ci.ChannelID) == channelID {
 			c.LocalBalance = lightning.Satoshi(ci.LocalBalance.ToUnit(btcutil.AmountSatoshi))
 			c.RemoteBalance = lightning.Satoshi(ci.RemoteBalance.ToUnit(btcutil.AmountSatoshi))
+			c.Private = ci.Private
 		}
 	}
 
@@ -181,10 +182,8 @@ func (l Lnd) GetChannel(ctx context.Context, channelID lightning.ChannelID) (lig
 }
 
 // ListChannels of local node.
-//
-// Assumes we don't want to act on private channel liquidity management.
 func (l Lnd) ListChannels(ctx context.Context) (lightning.Channels, error) {
-	channelInfos, err := l.c.ListChannels(ctx, false, true)
+	channelInfos, err := l.c.ListChannels(ctx, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -230,6 +229,7 @@ func (l Lnd) ListChannels(ctx context.Context) (lightning.Channels, error) {
 				Updated:   remote.LastUpdate,
 				Addresses: remote.Addresses,
 			},
+			Private: ci.Private,
 		}
 	}
 
