@@ -181,6 +181,8 @@ func (l Lnd) GetChannel(ctx context.Context, channelID lightning.ChannelID) (lig
 }
 
 // ListChannels of local node.
+//
+// Assumes we don't want to act on private channel liquidity management.
 func (l Lnd) ListChannels(ctx context.Context) (lightning.Channels, error) {
 	channelInfos, err := l.c.ListChannels(ctx, false, true)
 	if err != nil {
