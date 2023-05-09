@@ -50,11 +50,11 @@ type invoicer interface {
 }
 
 // NewLndClient backed by a single LND lightning node.
-func NewLndClient(c channeler, i invoicer, r router, network string) LndClient {
+func NewLndClient(s *lndclient.GrpcLndServices, network string) LndClient {
 	return LndClient{
-		c:       c,
-		i:       i,
-		r:       r,
+		c:       s.Client,
+		i:       s.Client,
+		r:       s.Router,
 		network: network,
 	}
 }

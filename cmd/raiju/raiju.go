@@ -112,12 +112,12 @@ func main() {
 				RPCTimeout:         rpcTimeout,
 			}
 			services, err := lndclient.NewLndServices(cfg)
-
 			if err != nil {
 				return err
 			}
+			defer services.Close()
 
-			c := lightning.NewLndClient(services.Client, services.Client, services.Router, *network)
+			c := lightning.NewLndClient(services, *network)
 			f, err := parseFees(*liquidityThresholds, *liquidityFees, *liquidityStickiness)
 			if err != nil {
 				return err
@@ -179,12 +179,12 @@ func main() {
 				RPCTimeout:         rpcTimeout,
 			}
 			services, err := lndclient.NewLndServices(cfg)
-
 			if err != nil {
 				return err
 			}
+			defer services.Close()
 
-			c := lightning.NewLndClient(services.Client, services.Client, services.Router, *network)
+			c := lightning.NewLndClient(services, *network)
 			f, err := parseFees(*liquidityThresholds, *liquidityFees, *liquidityStickiness)
 			if err != nil {
 				return err
@@ -259,8 +259,9 @@ func main() {
 			if err != nil {
 				return err
 			}
+			defer services.Close()
 
-			c := lightning.NewLndClient(services.Client, services.Client, services.Router, *network)
+			c := lightning.NewLndClient(services, *network)
 			f, err := parseFees(*liquidityThresholds, *liquidityFees, *liquidityStickiness)
 			if err != nil {
 				return err
@@ -319,12 +320,12 @@ func main() {
 				RPCTimeout:         rpcTimeout,
 			}
 			services, err := lndclient.NewLndServices(cfg)
-
 			if err != nil {
 				return err
 			}
+			defer services.Close()
 
-			c := lightning.NewLndClient(services.Client, services.Client, services.Router, *network)
+			c := lightning.NewLndClient(services, *network)
 			f, err := parseFees(*liquidityThresholds, *liquidityFees, *liquidityStickiness)
 			if err != nil {
 				return err
@@ -366,8 +367,9 @@ func main() {
 			if err != nil {
 				return err
 			}
+			defer services.Close()
 
-			c := lightning.NewLndClient(services.Client, services.Client, services.Router, *network)
+			c := lightning.NewLndClient(services, *network)
 			f, err := parseFees(*liquidityThresholds, *liquidityFees, *liquidityStickiness)
 			if err != nil {
 				return err
