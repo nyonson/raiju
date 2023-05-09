@@ -1,5 +1,4 @@
-// Hook raiju up to LND.
-package lnd
+package lightning
 
 import (
 	"context"
@@ -21,10 +20,9 @@ import (
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/routing/route"
 	"github.com/lightningnetwork/lnd/zpay32"
-	"github.com/nyonson/raiju/lightning"
 )
 
-//go:generate gotests -w -exported .
+//go:generate gotests -w -exported lnd.go
 //go:generate moq -stub -skip-ensure -out lnd_mock_test.go . channeler router invoicer
 
 // channeler is the minimum channel requirements from LND.
@@ -51,9 +49,9 @@ type invoicer interface {
 	AddInvoice(ctx context.Context, in *invoicesrpc.AddInvoiceData) (lntypes.Hash, string, error)
 }
 
-// New Lightning instance.
-func New(c channeler, i invoicer, r router, network string) Lnd {
-	return Lnd{
+// NewLndClient backed by a single LND lightning node.
+func NewLndClient(c channeler, i invoicer, r router, network string) LndClient {
+	return LndClient{
 		c:       c,
 		i:       i,
 		r:       r,
@@ -61,8 +59,8 @@ func New(c channeler, i invoicer, r router, network string) Lnd {
 	}
 }
 
-// Lnd client backed by LND node.
-type Lnd struct {
+// LndClient client backed by LND node.
+type LndClient struct {
 	c       channeler
 	r       router
 	i       invoicer
@@ -70,33 +68,33 @@ type Lnd struct {
 }
 
 // GetInfo of local node.
-func (l Lnd) GetInfo(ctx context.Context) (*lightning.Info, error) {
+func (l LndClient) GetInfo(ctx context.Context) (*Info, error) {
 	i, err := l.c.GetInfo(ctx)
 
 	if err != nil {
-		return &lightning.Info{}, err
+		return &Info{}, err
 	}
 
-	info := lightning.Info{
-		PubKey: lightning.PubKey(hex.EncodeToString(i.IdentityPubkey[:])),
+	info := Info{
+		PubKey: PubKey(hex.EncodeToString(i.IdentityPubkey[:])),
 	}
 
 	return &info, nil
 }
 
 // DescribeGraph of the Lightning Network.
-func (l Lnd) DescribeGraph(ctx context.Context) (*lightning.Graph, error) {
+func (l LndClient) DescribeGraph(ctx context.Context) (*Graph, error) {
 	g, err := l.c.DescribeGraph(ctx, false)
 
 	if err != nil {
-		return &lightning.Graph{}, err
+		return &Graph{}, err
 	}
 
 	// marshall nodes
-	nodes := make([]lightning.Node, len(g.Nodes))
+	nodes := make([]Node, len(g.Nodes))
 	for i, n := range g.Nodes {
-		nodes[i] = lightning.Node{
-			PubKey:    lightning.PubKey(n.PubKey.String()),
+		nodes[i] = Node{
+			PubKey:    PubKey(n.PubKey.String()),
 			Alias:     n.Alias,
 			Updated:   n.LastUpdate,
 			Addresses: n.Addresses,
@@ -104,16 +102,16 @@ func (l Lnd) DescribeGraph(ctx context.Context) (*lightning.Graph, error) {
 	}
 
 	// marshall edges
-	edges := make([]lightning.Edge, len(g.Edges))
+	edges := make([]Edge, len(g.Edges))
 	for i, e := range g.Edges {
-		edges[i] = lightning.Edge{
-			Capacity: lightning.Satoshi(e.Capacity.ToUnit(btcutil.AmountSatoshi)),
-			Node1:    lightning.PubKey(e.Node1.String()),
-			Node2:    lightning.PubKey(e.Node2.String()),
+		edges[i] = Edge{
+			Capacity: Satoshi(e.Capacity.ToUnit(btcutil.AmountSatoshi)),
+			Node1:    PubKey(e.Node1.String()),
+			Node2:    PubKey(e.Node2.String()),
 		}
 	}
 
-	graph := &lightning.Graph{
+	graph := &Graph{
 		Nodes: nodes,
 		Edges: edges,
 	}
@@ -122,42 +120,42 @@ func (l Lnd) DescribeGraph(ctx context.Context) (*lightning.Graph, error) {
 }
 
 // GetChannel with ID.
-func (l Lnd) GetChannel(ctx context.Context, channelID lightning.ChannelID) (lightning.Channel, error) {
+func (l LndClient) GetChannel(ctx context.Context, channelID ChannelID) (Channel, error) {
 	// returns a channel edge which doesn't have liquidity info
 	ce, err := l.c.GetChanInfo(ctx, uint64(channelID))
 	if err != nil {
-		return lightning.Channel{}, err
+		return Channel{}, err
 	}
 
 	local, err := l.c.GetInfo(ctx)
 	if err != nil {
-		return lightning.Channel{}, err
+		return Channel{}, err
 	}
 
 	// figure out if which node is local and which is remote
 	remotePubkey := ce.Node1
 	// FeeRateMilliMsat is a weird name
-	localFee := lightning.FeePPM(ce.Node2Policy.FeeRateMilliMsat)
+	localFee := FeePPM(ce.Node2Policy.FeeRateMilliMsat)
 	if local.IdentityPubkey == remotePubkey {
 		remotePubkey = ce.Node2
-		localFee = lightning.FeePPM(ce.Node1Policy.FeeRateMilliMsat)
+		localFee = FeePPM(ce.Node1Policy.FeeRateMilliMsat)
 	}
 
 	remote, err := l.c.GetNodeInfo(ctx, remotePubkey, false)
 	if err != nil {
-		return lightning.Channel{}, err
+		return Channel{}, err
 	}
 
-	c := lightning.Channel{
-		Edge: lightning.Edge{
-			Capacity: lightning.Satoshi(ce.Capacity.ToUnit(btcutil.AmountSatoshi)),
-			Node1:    lightning.PubKey(ce.Node1.String()),
-			Node2:    lightning.PubKey(ce.Node2.String()),
+	c := Channel{
+		Edge: Edge{
+			Capacity: Satoshi(ce.Capacity.ToUnit(btcutil.AmountSatoshi)),
+			Node1:    PubKey(ce.Node1.String()),
+			Node2:    PubKey(ce.Node2.String()),
 		},
-		ChannelID: lightning.ChannelID(ce.ChannelID),
+		ChannelID: ChannelID(ce.ChannelID),
 		LocalFee:  localFee,
-		RemoteNode: lightning.Node{
-			PubKey:    lightning.PubKey(remote.PubKey.String()),
+		RemoteNode: Node{
+			PubKey:    PubKey(remote.PubKey.String()),
 			Alias:     remote.Alias,
 			Updated:   remote.LastUpdate,
 			Addresses: remote.Addresses,
@@ -167,13 +165,13 @@ func (l Lnd) GetChannel(ctx context.Context, channelID lightning.ChannelID) (lig
 	// get local and remote liquidity from the list channels call
 	cs, err := l.c.ListChannels(ctx, false, false)
 	if err != nil {
-		return lightning.Channel{}, err
+		return Channel{}, err
 	}
 
 	for _, ci := range cs {
-		if lightning.ChannelID(ci.ChannelID) == channelID {
-			c.LocalBalance = lightning.Satoshi(ci.LocalBalance.ToUnit(btcutil.AmountSatoshi))
-			c.RemoteBalance = lightning.Satoshi(ci.RemoteBalance.ToUnit(btcutil.AmountSatoshi))
+		if ChannelID(ci.ChannelID) == channelID {
+			c.LocalBalance = Satoshi(ci.LocalBalance.ToUnit(btcutil.AmountSatoshi))
+			c.RemoteBalance = Satoshi(ci.RemoteBalance.ToUnit(btcutil.AmountSatoshi))
 			c.Private = ci.Private
 		}
 	}
@@ -182,7 +180,7 @@ func (l Lnd) GetChannel(ctx context.Context, channelID lightning.ChannelID) (lig
 }
 
 // ListChannels of local node.
-func (l Lnd) ListChannels(ctx context.Context) (lightning.Channels, error) {
+func (l LndClient) ListChannels(ctx context.Context) (Channels, error) {
 	channelInfos, err := l.c.ListChannels(ctx, false, false)
 	if err != nil {
 		return nil, err
@@ -193,7 +191,7 @@ func (l Lnd) ListChannels(ctx context.Context) (lightning.Channels, error) {
 		return nil, err
 	}
 
-	channels := make([]lightning.Channel, len(channelInfos))
+	channels := make([]Channel, len(channelInfos))
 	for i, ci := range channelInfos {
 		ce, err := l.c.GetChanInfo(ctx, ci.ChannelID)
 		if err != nil {
@@ -202,10 +200,10 @@ func (l Lnd) ListChannels(ctx context.Context) (lightning.Channels, error) {
 
 		// figure out if which node is local and which is remote
 		remotePubkey := ce.Node1
-		localFee := lightning.FeePPM(ce.Node2Policy.FeeRateMilliMsat)
+		localFee := FeePPM(ce.Node2Policy.FeeRateMilliMsat)
 		if local.IdentityPubkey == remotePubkey {
 			remotePubkey = ce.Node2
-			localFee = lightning.FeePPM(ce.Node1Policy.FeeRateMilliMsat)
+			localFee = FeePPM(ce.Node1Policy.FeeRateMilliMsat)
 		}
 
 		remote, err := l.c.GetNodeInfo(ctx, remotePubkey, false)
@@ -213,18 +211,18 @@ func (l Lnd) ListChannels(ctx context.Context) (lightning.Channels, error) {
 			return nil, err
 		}
 
-		channels[i] = lightning.Channel{
-			Edge: lightning.Edge{
-				Capacity: lightning.Satoshi(ce.Capacity.ToUnit(btcutil.AmountSatoshi)),
-				Node1:    lightning.PubKey(ce.Node1.String()),
-				Node2:    lightning.PubKey(ce.Node2.String()),
+		channels[i] = Channel{
+			Edge: Edge{
+				Capacity: Satoshi(ce.Capacity.ToUnit(btcutil.AmountSatoshi)),
+				Node1:    PubKey(ce.Node1.String()),
+				Node2:    PubKey(ce.Node2.String()),
 			},
-			ChannelID:     lightning.ChannelID(ci.ChannelID),
-			LocalBalance:  lightning.Satoshi(ci.LocalBalance.ToUnit(btcutil.AmountSatoshi)),
+			ChannelID:     ChannelID(ci.ChannelID),
+			LocalBalance:  Satoshi(ci.LocalBalance.ToUnit(btcutil.AmountSatoshi)),
 			LocalFee:      localFee,
-			RemoteBalance: lightning.Satoshi(ci.RemoteBalance.ToUnit(btcutil.AmountSatoshi)),
-			RemoteNode: lightning.Node{
-				PubKey:    lightning.PubKey(remote.PubKey.String()),
+			RemoteBalance: Satoshi(ci.RemoteBalance.ToUnit(btcutil.AmountSatoshi)),
+			RemoteNode: Node{
+				PubKey:    PubKey(remote.PubKey.String()),
 				Alias:     remote.Alias,
 				Updated:   remote.LastUpdate,
 				Addresses: remote.Addresses,
@@ -237,7 +235,7 @@ func (l Lnd) ListChannels(ctx context.Context) (lightning.Channels, error) {
 }
 
 // SetFees for channel with rate in ppm.
-func (l Lnd) SetFees(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error {
+func (l LndClient) SetFees(ctx context.Context, channelID ChannelID, fee FeePPM) error {
 	ce, err := l.c.GetChanInfo(ctx, uint64(channelID))
 	if err != nil {
 		return err
@@ -258,16 +256,16 @@ func (l Lnd) SetFees(ctx context.Context, channelID lightning.ChannelID, fee lig
 }
 
 // AddInvoice of amount.
-func (l Lnd) AddInvoice(ctx context.Context, amount lightning.Satoshi) (lightning.Invoice, error) {
+func (l LndClient) AddInvoice(ctx context.Context, amount Satoshi) (Invoice, error) {
 	in := &invoicesrpc.AddInvoiceData{
 		Value: lnwire.NewMSatFromSatoshis(btcutil.Amount(amount)),
 	}
 	_, invoice, err := l.i.AddInvoice(ctx, in)
-	return lightning.Invoice(invoice), err
+	return Invoice(invoice), err
 }
 
 // SendPayment to pay for invoice.
-func (l Lnd) SendPayment(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.FeePPM) (lightning.Satoshi, error) {
+func (l LndClient) SendPayment(ctx context.Context, invoice Invoice, outChannelID ChannelID, lastHopPubKey PubKey, maxFee FeePPM) (Satoshi, error) {
 	lhpk, err := route.NewVertexFromStr(string(lastHopPubKey))
 	if err != nil {
 		return 0, err
@@ -301,7 +299,7 @@ func (l Lnd) SendPayment(ctx context.Context, invoice lightning.Invoice, outChan
 		select {
 		case s := <-status:
 			if s.State == lnrpc.Payment_SUCCEEDED {
-				return lightning.Satoshi(s.Fee.ToSatoshis()), nil
+				return Satoshi(s.Fee.ToSatoshis()), nil
 			}
 		case e := <-error:
 			return 0, fmt.Errorf("error paying invoice: %w", e)
@@ -310,8 +308,8 @@ func (l Lnd) SendPayment(ctx context.Context, invoice lightning.Invoice, outChan
 }
 
 // SubscribeChannelUpdates signals when a channel's liquidity changes.
-func (l Lnd) SubscribeChannelUpdates(ctx context.Context) (<-chan lightning.Channels, <-chan error, error) {
-	cc := make(chan lightning.Channels)
+func (l LndClient) SubscribeChannelUpdates(ctx context.Context) (<-chan Channels, <-chan error, error) {
+	cc := make(chan Channels)
 	ec := make(chan error)
 
 	htlcs, errors, err := l.r.SubscribeHtlcEvents(ctx)
@@ -324,10 +322,10 @@ func (l Lnd) SubscribeChannelUpdates(ctx context.Context) (<-chan lightning.Chan
 		for {
 			select {
 			case h := <-htlcs:
-				channels := make(lightning.Channels, 0)
+				channels := make(Channels, 0)
 
 				if h.GetIncomingChannelId() != 0 {
-					c, err := l.GetChannel(ctx, lightning.ChannelID(h.GetIncomingChannelId()))
+					c, err := l.GetChannel(ctx, ChannelID(h.GetIncomingChannelId()))
 					if err != nil {
 						ec <- err
 						break
@@ -336,7 +334,7 @@ func (l Lnd) SubscribeChannelUpdates(ctx context.Context) (<-chan lightning.Chan
 				}
 
 				if h.GetOutgoingChannelId() != 0 {
-					c, err := l.GetChannel(ctx, lightning.ChannelID(h.GetOutgoingChannelId()))
+					c, err := l.GetChannel(ctx, ChannelID(h.GetOutgoingChannelId()))
 					if err != nil {
 						ec <- err
 						break
@@ -355,7 +353,7 @@ func (l Lnd) SubscribeChannelUpdates(ctx context.Context) (<-chan lightning.Chan
 }
 
 // ForwardingHistory of node since the time give, capped at 50,000 events.
-func (l Lnd) ForwardingHistory(ctx context.Context, since time.Time) ([]lightning.Forward, error) {
+func (l LndClient) ForwardingHistory(ctx context.Context, since time.Time) ([]Forward, error) {
 	maxEvents := 50000
 	req := lndclient.ForwardingHistoryRequest{
 		StartTime: since,
@@ -372,12 +370,12 @@ func (l Lnd) ForwardingHistory(ctx context.Context, since time.Time) ([]lightnin
 		return nil, errors.New("pulled too many events, lower time window")
 	}
 
-	forwards := make([]lightning.Forward, 0)
+	forwards := make([]Forward, 0)
 	for _, f := range res.Events {
-		forward := lightning.Forward{
+		forward := Forward{
 			Timestamp:  f.Timestamp,
-			ChannelIn:  lightning.ChannelID(f.ChannelIn),
-			ChannelOut: lightning.ChannelID(f.ChannelOut),
+			ChannelIn:  ChannelID(f.ChannelIn),
+			ChannelOut: ChannelID(f.ChannelOut),
 		}
 		forwards = append(forwards, forward)
 	}

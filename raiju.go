@@ -11,7 +11,7 @@ import (
 	"github.com/nyonson/raiju/lightning"
 )
 
-//go:generate gotests -w -exported .
+//go:generate gotests -w -exported raiju.go
 //go:generate moq -stub -skip-ensure -out raiju_mock_test.go . lightninger
 
 type lightninger interface {

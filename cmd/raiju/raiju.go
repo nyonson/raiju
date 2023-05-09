@@ -19,7 +19,6 @@ import (
 
 	"github.com/nyonson/raiju"
 	"github.com/nyonson/raiju/lightning"
-	"github.com/nyonson/raiju/lnd"
 	"github.com/nyonson/raiju/view"
 )
 
@@ -118,7 +117,7 @@ func main() {
 				return err
 			}
 
-			c := lnd.New(services.Client, services.Client, services.Router, *network)
+			c := lightning.NewLndClient(services.Client, services.Client, services.Router, *network)
 			f, err := parseFees(*liquidityThresholds, *liquidityFees, *liquidityStickiness)
 			if err != nil {
 				return err
@@ -185,7 +184,7 @@ func main() {
 				return err
 			}
 
-			c := lnd.New(services.Client, services.Client, services.Router, *network)
+			c := lightning.NewLndClient(services.Client, services.Client, services.Router, *network)
 			f, err := parseFees(*liquidityThresholds, *liquidityFees, *liquidityStickiness)
 			if err != nil {
 				return err
@@ -261,7 +260,7 @@ func main() {
 				return err
 			}
 
-			c := lnd.New(services.Client, services.Client, services.Router, *network)
+			c := lightning.NewLndClient(services.Client, services.Client, services.Router, *network)
 			f, err := parseFees(*liquidityThresholds, *liquidityFees, *liquidityStickiness)
 			if err != nil {
 				return err
@@ -325,7 +324,7 @@ func main() {
 				return err
 			}
 
-			c := lnd.New(services.Client, services.Client, services.Router, *network)
+			c := lightning.NewLndClient(services.Client, services.Client, services.Router, *network)
 			f, err := parseFees(*liquidityThresholds, *liquidityFees, *liquidityStickiness)
 			if err != nil {
 				return err
@@ -368,7 +367,7 @@ func main() {
 				return err
 			}
 
-			c := lnd.New(services.Client, services.Client, services.Router, *network)
+			c := lightning.NewLndClient(services.Client, services.Client, services.Router, *network)
 			f, err := parseFees(*liquidityThresholds, *liquidityFees, *liquidityStickiness)
 			if err != nil {
 				return err
