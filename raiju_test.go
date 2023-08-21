@@ -704,14 +704,14 @@ func TestRaiju_Reaper(t *testing.T) {
 	}
 }
 
-func TestRaiju_RebalanceAll(t *testing.T) {
+func TestRaiju_Rebalance(t *testing.T) {
 	type fields struct {
 		l lightninger
 	}
 	type args struct {
-		ctx         context.Context
-		stepPercent float64
-		maxPercent  float64
+		ctx        context.Context
+		maxPercent float64
+		maxFee     lightning.FeePPM
 	}
 	tests := []struct {
 		name    string
@@ -750,8 +750,8 @@ func TestRaiju_RebalanceAll(t *testing.T) {
 				},
 			},
 			args: args{
-				stepPercent: 1,
-				maxPercent:  5,
+				maxPercent: 5,
+				maxFee:     lightning.FeePPM(1024),
 			},
 			want:    map[lightning.ChannelID]float64{},
 			wantErr: false,
@@ -762,85 +762,12 @@ func TestRaiju_RebalanceAll(t *testing.T) {
 			r := Raiju{
 				l: tt.fields.l,
 			}
-			got, err := r.RebalanceAll(tt.args.ctx, tt.args.stepPercent, tt.args.maxPercent)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Raiju.RebalanceAll() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Raiju.RebalanceAll() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestRaiju_Rebalance(t *testing.T) {
-	type fields struct {
-		l lightninger
-	}
-	type args struct {
-		ctx           context.Context
-		outChannelID  lightning.ChannelID
-		lastHopPubKey lightning.PubKey
-		stepPercent   float64
-		maxPercent    float64
-		maxFee        lightning.FeePPM
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    float64
-		want1   lightning.Satoshi
-		wantErr bool
-	}{
-		{
-			name: "rebalance to max percent",
-			fields: fields{
-				l: &lightningerMock{
-					AddInvoiceFunc: func(ctx context.Context, amount lightning.Satoshi) (lightning.Invoice, error) {
-						return lightning.Invoice(""), nil
-					},
-					GetChannelFunc: func(ctx context.Context, channelID lightning.ChannelID) (lightning.Channel, error) {
-						return lightning.Channel{
-							Edge:          lightning.Edge{},
-							ChannelID:     0,
-							LocalBalance:  0,
-							RemoteBalance: 0,
-							RemoteNode:    lightning.Node{},
-						}, nil
-					},
-					SendPaymentFunc: func(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.FeePPM) (lightning.Satoshi, error) {
-						return 1, nil
-					},
-				},
-			},
-			args: args{
-				outChannelID:  0,
-				lastHopPubKey: pubKey,
-				stepPercent:   1,
-				maxPercent:    5,
-				maxFee:        10,
-			},
-			want:    5,
-			want1:   5,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := Raiju{
-				l: tt.fields.l,
-			}
-			got, got1, err := r.Rebalance(tt.args.ctx, tt.args.outChannelID, tt.args.lastHopPubKey, tt.args.stepPercent, tt.args.maxPercent, tt.args.maxFee)
+			got, err := r.Rebalance(tt.args.ctx, tt.args.maxPercent, tt.args.maxFee)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Raiju.Rebalance() error = %v, wantErr %v", err, tt.wantErr)
-				return
 			}
-			if got != tt.want {
-				t.Errorf("Raiju.Rebalance() got = %v, want %v", got, tt.want)
-			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf("Raiju.Rebalance() got1 = %v, want %v", got1, tt.want1)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Raiju.Rebalance() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -66,29 +66,6 @@ func TestLndClient_GetInfo(t *testing.T) {
 	}
 }
 
-func TestNewLndClient(t *testing.T) {
-	type args struct {
-		c       channeler
-		i       invoicer
-		r       router
-		network string
-	}
-	tests := []struct {
-		name string
-		args args
-		want LndClient
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewLndClient(tt.args.c, tt.args.i, tt.args.r, tt.args.network); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewLndClient() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestLndClient_DescribeGraph(t *testing.T) {
 	type fields struct {
 		c       channeler

@@ -218,32 +218,20 @@ func main() {
 	}
 
 	rebalanceFlagSet := flag.NewFlagSet("rebalance", flag.ExitOnError)
-	outChannelID := rebalanceFlagSet.Uint64("out-channel-id", 0, "Send out of channel ID")
-	lastHopPubkey := rebalanceFlagSet.String("last-hop-pubkey", "", "Receive from node")
 	maxFeePPM := rebalanceFlagSet.Float64("max-fee-ppm", 0, "Override the default of low liquidity fee ppm based on global standard flag")
 
 	rebalanceCmd := &ffcli.Command{
 		Name:       "rebalance",
-		ShortUsage: "raiju rebalance <step-percent> <max-percent>",
+		ShortUsage: "raiju rebalance <max-percent>",
 		ShortHelp:  "Send circular payment(s) to actively rebalance channels",
-		LongHelp:   "By default, attempts to move liquidity from the channels with the highest local liquidity to the lowest. If an out channel and last hop node are specified however, this is and implicit force command and attempts to move the liquidity damn whatever the current local amounts.",
+		LongHelp:   "Attempts to move liquidity from the channels with the highest local liquidity to the lowest.",
 		FlagSet:    rebalanceFlagSet,
 		Exec: func(ctx context.Context, args []string) error {
-			if len(args) != 2 {
-				return errors.New("rebalance takes two args")
+			if len(args) != 1 {
+				return errors.New("rebalance takes one arg")
 			}
 
-			// must be set together
-			if (*lastHopPubkey != "" && *outChannelID == 0) || (*outChannelID != 0 && *lastHopPubkey == "") {
-				return errors.New("out-channel-id and last-hop-pubkey must be set together")
-			}
-
-			stepPercent, err := strconv.ParseFloat(args[0], 64)
-			if err != nil {
-				return fmt.Errorf("unable to parse arg: %s", args[0])
-			}
-
-			maxPercent, err := strconv.ParseFloat(args[1], 64)
+			maxPercent, err := strconv.ParseFloat(args[0], 64)
 			if err != nil {
 				return fmt.Errorf("unable to parse arg: %s", args[1])
 			}
@@ -277,22 +265,13 @@ func main() {
 				maxFee = lightning.FeePPM(*maxFeePPM)
 			}
 
-			if *lastHopPubkey != "" {
-				cmdLog.Println("Rebalancing channel...")
-				percent, fee, err := r.Rebalance(ctx, lightning.ChannelID(*outChannelID), lightning.PubKey(*lastHopPubkey), stepPercent, maxPercent, maxFee)
-				if err != nil {
-					return err
-				}
-				cmdLog.Printf("rebalanced %f percent with a %d sat fee\n", percent, fee)
-			} else {
-				cmdLog.Println("Rebalancing all channels...")
-				rebalanced, err := r.RebalanceAll(ctx, stepPercent, maxPercent)
-				if err != nil {
-					return err
-				}
-				for id, percent := range rebalanced {
-					cmdLog.Printf("rebalanced %f percent of channel %d\n", percent, id)
-				}
+			cmdLog.Println("Rebalancing channels...")
+			rebalanced, err := r.Rebalance(ctx, maxPercent, maxFee)
+			if err != nil {
+				return err
+			}
+			for id, percent := range rebalanced {
+				cmdLog.Printf("rebalanced %f percent of channel %d\n", percent, id)
 			}
 
 			return nil
