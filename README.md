@@ -91,15 +91,13 @@ WantedBy=multi-user.target
 
 **Actively manage channel liquidity**
 
-Circular rebalance channels that aren't doing so hot liquidity-wise or force rebalance a single channel.
+Circular rebalance channels that aren't doing so hot liquidity-wise.
 
 Where the `fees` command attempts to balance channels passively, this is an *active* approach where liquidity is manually pushed. The cost of active rebalancing are the lightning payment fees. While this command could be used to push large amounts of liquidity, the default settings are intended to just prod things in the right direction. 
 
 The maximum fee ppm setting defaults to the low liquidity fee setting used by the `fees` command. Theoretically, this means that even if a rebalance is instantly canceled out by a large payment at least fees are re-coup'd.
 
 The command takes one argument, the maximum percentage of the channel capacity to attempt to rebalance.
-
-A smaller step percentage will increase the likely hood of a successful payment, but might also increase fees a bit if the payment collects a lot of `base_fees` on its route.
 
 The command will roll through channels with high liquidity and attempt to push it through channels of low liquidity. High and low are defined by the defined by the global `-liquidity-thresholds` flag. For example, if liquidity thresholds is set to `80,20`, channels with local liquidity over 80% are considered "high" and channels with local liquidity under 20% are considered "low".
 
