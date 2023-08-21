@@ -12,7 +12,6 @@
 
 `raiju` is a CLI app which sits on top of a lightning node and brings some smarts (perhaps that is debateable) to the channel life-cycle: open, manage, and close. `raiju` only supports the [lnd](https://github.com/lightningnetwork/lnd) node implementation at the moment.
 
-- [dashboard](#dashboard)
 - [subcommands](#subcommands)
   - [candidates](#candidates)
   - [fees](#fees)
@@ -20,10 +19,6 @@
 - [installation](#installation)
 - [configuration](#configuration)
 - [node](#node)
-
-# dashboard
-
-`raiju`'s root command, `raiju`, fires up an interactive TUI dashboard which uses the subcommands under the hood.
 
 # subcommands 
 
