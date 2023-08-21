@@ -278,57 +278,12 @@ func main() {
 		},
 	}
 
-	reaperFlagSet := flag.NewFlagSet("reaper", flag.ExitOnError)
-
-	reaperCmd := &ffcli.Command{
-		Name:       "reaper",
-		ShortUsage: "raiju reaper",
-		ShortHelp:  "Find unproductive channels",
-		LongHelp:   "Lists poorly performing channels. Currently based on the number of forwards in the past month.",
-		FlagSet:    reaperFlagSet,
-		Exec: func(ctx context.Context, args []string) error {
-			if len(args) != 0 {
-				return errors.New("reaper does not take any args")
-			}
-
-			cfg := &lndclient.LndServicesConfig{
-				LndAddress:         *host,
-				Network:            lndclient.Network(*network),
-				CustomMacaroonPath: *macPath,
-				TLSPath:            *tlsPath,
-				RPCTimeout:         rpcTimeout,
-			}
-			services, err := lndclient.NewLndServices(cfg)
-			if err != nil {
-				return err
-			}
-			defer services.Close()
-
-			c := lightning.NewLndClient(services, *network)
-			f, err := parseFees(*liquidityThresholds, *liquidityFees, *liquidityStickiness)
-			if err != nil {
-				return err
-			}
-
-			r := raiju.New(c, f)
-
-			channels, err := r.Reaper(ctx)
-			if err != nil {
-				return err
-			}
-
-			view.TableChannels(channels)
-
-			return nil
-		},
-	}
-
 	root := &ffcli.Command{
 		ShortUsage:  "raiju [global flags] [subcommand] [subcommand flags] [subcommand args]",
 		FlagSet:     rootFlagSet,
 		ShortHelp:   "Interactive dashboard",
 		LongHelp:    "If given no subcommand, fire up an interactive dashboard that uses the subcommands under the hood.",
-		Subcommands: []*ffcli.Command{candidatesCmd, feesCmd, rebalanceCmd, reaperCmd},
+		Subcommands: []*ffcli.Command{candidatesCmd, feesCmd, rebalanceCmd},
 		Options:     []ff.Option{ff.WithEnvVarPrefix("RAIJU"), ff.WithConfigFileFlag("config"), ff.WithConfigFileParser(ff.PlainParser), ff.WithAllowMissingConfigFile(true)},
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) != 0 {

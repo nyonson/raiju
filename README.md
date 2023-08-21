@@ -17,7 +17,6 @@
   - [candidates](#candidates)
   - [fees](#fees)
   - [rebalance](#rebalance)
-  - [reaper](#reaper)
 - [installation](#installation)
 - [configuration](#configuration)
 - [node](#node)
@@ -140,19 +139,6 @@ RandomizedDelaySec=1h
 
 [Install]
 WantedBy=timers.target
-```
-
-## reaper
-
-**Close the least efficient channels**
-
-Lists channels which should be closed and re-allocated. Similar to the `candidates` command, these are just suggestions and no channels are automatically closed. They must be closed out-of-band with another tool like `lncli`. This might be made automated in the future.
-
-```
-$ raiju reaper
-Channel ID          Pubkey   Capacity (BTC)  
-859008852420919297  fewsats  0.1             
-826864630068281345  Pinky    0.02   
 ```
 
 # installation
