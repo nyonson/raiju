@@ -13,8 +13,9 @@ import (
 
 const (
 	// larger step percentages are more efficient because they avoid base fees, but might not get routed
-	maxStepPercent = 1.0
-	minStepPercent = 0.05
+	maxStepPercent    = 1.0
+	minStepPercent    = 0.1
+	changeStepPercent = 0.4
 )
 
 //go:generate gotests -w -exported raiju.go
@@ -334,21 +335,24 @@ func (r Raiju) rebalanceChannel(ctx context.Context, outChannelID lightning.Chan
 
 	amount := int64(float64(c.Capacity) * stepPercent / 100)
 
+	var currentStepPercent = stepPercent
 	var percentRebalanced float64
 	var totalFeePaid lightning.Satoshi
 
-	for percentRebalanced < maxPercent {
+	for percentRebalanced < maxPercent && currentStepPercent >= minStepPercent {
 		// create and pay invoice
 		invoice, err := r.l.AddInvoice(ctx, lightning.Satoshi(amount))
 		if err != nil {
 			return 0, 0, fmt.Errorf("error creating circular rebalance invoice: %w", err)
 		}
 		feePaid, err := r.l.SendPayment(ctx, invoice, outChannelID, lastHopPubKey, maxFee)
-		// not expecting rebalance payments to work all that often, so just short circuit and return what has been done
+		// assume payment failures might work if we lower the step percentage
+		// less efficient rebalances, but could still work
 		if err != nil {
-			return percentRebalanced, totalFeePaid, nil
+			currentStepPercent = currentStepPercent - changeStepPercent
+			continue
 		}
-		percentRebalanced += stepPercent
+		percentRebalanced += currentStepPercent
 		totalFeePaid += feePaid
 	}
 
@@ -398,7 +402,9 @@ func (r Raiju) Rebalance(ctx context.Context, maxPercent float64, maxFee lightni
 			if err != nil {
 				return map[lightning.ChannelID]float64{}, err
 			}
+
 			potentialLocal := lightning.Satoshi(float64(h.Capacity) * maxPercent)
+			// only shift liquidity if the fees won't change
 			if r.f.PotentialFee(ul, potentialLocal) != r.f.Fee(ul) {
 				p, f, err := r.rebalanceChannel(ctx, h.ChannelID, lastHopPubkey, maxStepPercent, (maxPercent - percentRebalanced), r.f.RebalanceFee())
 				if err != nil {
