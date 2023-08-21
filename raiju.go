@@ -13,9 +13,9 @@ import (
 
 const (
 	// larger step percentages are more efficient because they avoid base fees, but might not get routed
-	maxStepPercent    = 1.0
-	minStepPercent    = 0.1
-	changeStepPercent = 0.4
+	maxStepPercent    = 5.0
+	minStepPercent    = 0.5
+	changeStepPercent = 0.5
 )
 
 //go:generate gotests -w -exported raiju.go
@@ -406,7 +406,11 @@ func (r Raiju) Rebalance(ctx context.Context, maxPercent float64, maxFee lightni
 			potentialLocal := lightning.Satoshi(float64(h.Capacity) * maxPercent)
 			// only shift liquidity if the fees won't change
 			if r.f.PotentialFee(ul, potentialLocal) != r.f.Fee(ul) {
-				p, f, err := r.rebalanceChannel(ctx, h.ChannelID, lastHopPubkey, maxStepPercent, (maxPercent - percentRebalanced), r.f.RebalanceFee())
+				ms := maxStepPercent
+				if maxPercent < ms {
+					ms = maxPercent
+				}
+				p, f, err := r.rebalanceChannel(ctx, h.ChannelID, lastHopPubkey, ms, (maxPercent - percentRebalanced), r.f.RebalanceFee())
 				if err != nil {
 					return map[lightning.ChannelID]float64{}, err
 				}
