@@ -384,6 +384,10 @@ func (r Raiju) Rebalance(ctx context.Context, maxPercent float64, maxFee lightni
 	// Roll through high liquidity channels and try to push things through the low liquidity ones.
 	for _, h := range hlcs {
 		percentRebalanced := float64(0)
+		ms := maxStepPercent
+		if maxPercent < ms {
+			ms = maxPercent
+		}
 
 		// reshuffle low liquidity channels each time
 		rand.Shuffle(len(llcs), func(i, j int) {
@@ -406,10 +410,6 @@ func (r Raiju) Rebalance(ctx context.Context, maxPercent float64, maxFee lightni
 			potentialLocal := lightning.Satoshi(float64(h.Capacity) * maxPercent)
 			// only shift liquidity if the fees won't change
 			if r.f.PotentialFee(ul, potentialLocal) != r.f.Fee(ul) {
-				ms := maxStepPercent
-				if maxPercent < ms {
-					ms = maxPercent
-				}
 				p, f, err := r.rebalanceChannel(ctx, h.ChannelID, lastHopPubkey, ms, (maxPercent - percentRebalanced), r.f.RebalanceFee())
 				if err != nil {
 					return map[lightning.ChannelID]float64{}, err
