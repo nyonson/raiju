@@ -287,26 +287,26 @@ func main() {
 
 			view.TableFees(f)
 
-			// periodically rebalance, don't panic in this routine since its best effort
+			// periodically rebalance
 			go func() {
-				cfg := &lndclient.LndServicesConfig{
-					LndAddress:         *host,
-					Network:            lndclient.Network(*network),
-					CustomMacaroonPath: *macPath,
-					TLSPath:            *tlsPath,
-					RPCTimeout:         rpcTimeout,
-				}
-				services, err := lndclient.NewLndServices(cfg)
-				if err != nil {
-					cmdLog.Printf("Unable to connect to lnd in order to rebalance %s", err)
-					return
-				}
-				defer services.Close()
-
-				c := lightning.NewLndClient(services, *network)
-				r := raiju.New(c, f)
 				for range time.Tick(time.Duration(12) * time.Hour) {
 					func() {
+						cfg := &lndclient.LndServicesConfig{
+							LndAddress:         *host,
+							Network:            lndclient.Network(*network),
+							CustomMacaroonPath: *macPath,
+							TLSPath:            *tlsPath,
+							RPCTimeout:         rpcTimeout,
+						}
+						services, err := lndclient.NewLndServices(cfg)
+						if err != nil {
+							cmdLog.Printf("Unable to connect to lnd in order to rebalance %s", err)
+							return
+						}
+						defer services.Close()
+
+						c := lightning.NewLndClient(services, *network)
+						r := raiju.New(c, f)
 						cmdLog.Println("Rebalancing channels...")
 						rebalanced, err := r.Rebalance(ctx, 5.0, f.RebalanceFee())
 						if err != nil {
