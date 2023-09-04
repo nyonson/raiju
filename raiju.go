@@ -115,7 +115,7 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 	if request.PubKey == "" {
 		info, err := r.l.GetInfo(ctx)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unable to get root node info: %w", err)
 		}
 
 		request.PubKey = info.PubKey
