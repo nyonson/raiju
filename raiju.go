@@ -29,7 +29,7 @@ type lightninger interface {
 	GetChannel(ctx context.Context, channelID lightning.ChannelID) (lightning.Channel, error)
 	ListChannels(ctx context.Context) (lightning.Channels, error)
 	SendPayment(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.FeePPM) (lightning.Satoshi, error)
-	SetFees(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error
+	SetFees(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM, maxHTLC lightning.MilliSatoshi) error
 	SubscribeChannelUpdates(ctx context.Context) (<-chan lightning.Channels, <-chan error, error)
 }
 
@@ -308,8 +308,10 @@ func (r Raiju) setFees(ctx context.Context, channels lightning.Channels) (map[li
 	// update channel fees based on liquidity, but only change if necessary
 	for _, c := range channels {
 		fee := r.f.Fee(c)
+		// flow control, broadcast to the network the max payment size to forward through this channel.
+		maxPayment := c.LocalBalance.Millis() / 2
 		if c.LocalFee != fee && !c.Private {
-			err := r.l.SetFees(ctx, c.ChannelID, fee)
+			err := r.l.SetFees(ctx, c.ChannelID, fee, maxPayment)
 			if err != nil {
 				return map[lightning.ChannelID]lightning.FeePPM{}, err
 			}

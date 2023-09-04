@@ -234,7 +234,7 @@ func (l LndClient) ListChannels(ctx context.Context) (Channels, error) {
 }
 
 // SetFees for channel with rate in ppm.
-func (l LndClient) SetFees(ctx context.Context, channelID ChannelID, fee FeePPM) error {
+func (l LndClient) SetFees(ctx context.Context, channelID ChannelID, fee FeePPM, maxHTLC MilliSatoshi) error {
 	ce, err := l.c.GetChanInfo(ctx, uint64(channelID))
 	if err != nil {
 		return err
@@ -250,6 +250,7 @@ func (l LndClient) SetFees(ctx context.Context, channelID ChannelID, fee FeePPM)
 		BaseFeeMsat:   0,
 		FeeRate:       fee.Rate(),
 		TimeLockDelta: 80,
+		MaxHtlcMsat:   uint64(maxHTLC),
 	}
 	return l.c.UpdateChanPolicy(ctx, req, outpoint)
 }

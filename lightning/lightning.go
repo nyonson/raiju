@@ -14,6 +14,14 @@ func (s Satoshi) BTC() float64 {
 	return float64(s) / 100000000
 }
 
+// BTC value of Satoshi.
+func (s Satoshi) Millis() MilliSatoshi {
+	return MilliSatoshi(s * 1000)
+}
+
+// MilliSatoshi unit of bitcoin.
+type MilliSatoshi int64
+
 // FeePPM is the channel fee in part per million.
 type FeePPM float64
 

@@ -51,7 +51,7 @@ From a "make money routing" perspective, theoretically, these most distant nodes
 
 **Passively manage channel liquidity**
 
-Set channel fees based on the channel's current liquidity. The idea here is to encourage passive channel re-balancing through fees. If a channel has a too much local liquidity (high), fees are lowered in order to encourage relatively more outbound transactions. Visa versa for a channel with too little local liquidity (low). 
+Set channel fees based on the channel's current liquidity. The idea here is to encourage passive channel rebalancing through fees. If a channel has a too much local liquidity (high), fees are lowered in order to encourage relatively more outbound transactions. Visa versa for a channel with too little local liquidity (low). 
 
 The global `-liquidity-thresholds` flag determines how channels are grouped into liquidity buckets, while the `-liquidity-fees` flag determines the fee settings applied to those groups. For example, if thresholds are set to `80,20` and fees set to `5,50,500`, then channels with over 80% local liquidity will have a 5 PPM fee, channels between 80% and 20% local liquidity will have a 50 PPM fee, and channels with less than 20% liquidity will have a 500 PPM fee.
 
@@ -60,6 +60,8 @@ The `-liquidity-stickiness` attempts to avoid extra gossip by waiting for channe
 The `-liquidity-thresholds`, `-liquidity-fees`, and `-liquidity-stickiness` are global (not `fees` specific) because they are also used in the `rebalance` command to help coordinate the right amount of fees to pay in active rebalancing.
 
 `fees` follows the [zero-base-fee movement](http://www.rene-pickhardt.de/). I am honestly not sure if this is financially sound, but I appreciate the simpler mental model of only thinking in ppm.
+
+`fees` also automatically applies some [flow control](https://blog.bitmex.com/the-power-of-htlc_maximum_msat-as-a-control-valve-for-better-flow-control-improved-reliability-and-lower-expected-payment-failure-rates-on-the-lightning-network/) to channels in order to encourage more rebalancing.
 
 ## rebalance
 
