@@ -157,15 +157,11 @@ func main() {
 		},
 	}
 
-	feesFlagSet := flag.NewFlagSet("fees", flag.ExitOnError)
-	daemon := feesFlagSet.Bool("daemon", false, "Run daemon which monitors channel liquidities and immediately updates fees when thresholds are crossed")
-
 	feesCmd := &ffcli.Command{
 		Name:       "fees",
 		ShortUsage: "raiju fees",
 		ShortHelp:  "Set channel fees based on liquidity to passively rebalance channels",
 		LongHelp:   "Channels are grouped depending on the local liquidity thresholds setting and have fees applied based on the local liquidity fees setting.",
-		FlagSet:    feesFlagSet,
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) != 0 {
 				return errors.New("fees does not take any args")
@@ -199,18 +195,14 @@ func main() {
 				return err
 			}
 
-			// listen for updates
-			if *daemon {
-				for {
-					select {
-					case u := <-uc:
-						for id, fee := range u {
-							cmdLog.Printf("channel %d updated to %f fee PPM", id, fee)
-						}
-					case err := <-ec:
-						return err
-					}
+			// listen for first update which sets the fees, then exit
+			select {
+			case u := <-uc:
+				for id, fee := range u {
+					cmdLog.Printf("channel %d updated to %f fee PPM", id, fee)
 				}
+			case err := <-ec:
+				return err
 			}
 
 			return nil
@@ -278,12 +270,99 @@ func main() {
 		},
 	}
 
+	daemonCmd := &ffcli.Command{
+		Name:       "daemon",
+		ShortUsage: "raiju daemon",
+		ShortHelp:  "Daemon process running subcommands",
+		LongHelp:   "Long running service process to passively manage fees and periodically active rebalances.",
+		Exec: func(ctx context.Context, args []string) error {
+			if len(args) != 0 {
+				return errors.New("fees does not take any args")
+			}
+
+			f, err := parseFees(*liquidityThresholds, *liquidityFees, *liquidityStickiness)
+			if err != nil {
+				return err
+			}
+
+			view.TableFees(f)
+
+			// periodically rebalance, don't panic in this routine since its best effort
+			go func() {
+				cfg := &lndclient.LndServicesConfig{
+					LndAddress:         *host,
+					Network:            lndclient.Network(*network),
+					CustomMacaroonPath: *macPath,
+					TLSPath:            *tlsPath,
+					RPCTimeout:         rpcTimeout,
+				}
+				services, err := lndclient.NewLndServices(cfg)
+				if err != nil {
+					cmdLog.Printf("Unable to connect to lnd in order to rebalance %s", err)
+					return
+				}
+				defer services.Close()
+
+				c := lightning.NewLndClient(services, *network)
+				r := raiju.New(c, f)
+				for range time.Tick(time.Duration(4) * time.Hour) {
+					func() {
+						cmdLog.Println("Rebalancing channels...")
+						rebalanced, err := r.Rebalance(ctx, 5.0, f.RebalanceFee())
+						if err != nil {
+							cmdLog.Printf("Unable to to rebalance %s", err)
+							return
+						}
+						for id, percent := range rebalanced {
+							cmdLog.Printf("rebalanced %f percent of channel %d\n", percent, id)
+						}
+					}()
+				}
+			}()
+
+			cfg := &lndclient.LndServicesConfig{
+				LndAddress:         *host,
+				Network:            lndclient.Network(*network),
+				CustomMacaroonPath: *macPath,
+				TLSPath:            *tlsPath,
+				RPCTimeout:         rpcTimeout,
+			}
+			services, err := lndclient.NewLndServices(cfg)
+			if err != nil {
+				return err
+			}
+			defer services.Close()
+
+			c := lightning.NewLndClient(services, *network)
+			r := raiju.New(c, f)
+
+			uc, ec, err := r.Fees(ctx)
+			if err != nil {
+				return err
+			}
+
+			// listen for updates
+			for {
+				select {
+				case u := <-uc:
+					for id, fee := range u {
+						cmdLog.Printf("channel %d updated to %f fee PPM", id, fee)
+					}
+				case err := <-ec:
+					return err
+				}
+			}
+
+			return nil
+		},
+	}
+
 	root := &ffcli.Command{
 		ShortUsage:  "raiju [global flags] [subcommand] [subcommand flags] [subcommand args]",
 		FlagSet:     rootFlagSet,
 		ShortHelp:   "Interactive dashboard",
 		LongHelp:    "If given no subcommand, fire up an interactive dashboard that uses the subcommands under the hood.",
-		Subcommands: []*ffcli.Command{candidatesCmd, feesCmd, rebalanceCmd},
+		Subcommands: []*ffcli.Command{candidatesCmd, daemonCmd, feesCmd, rebalanceCmd},
 		Options:     []ff.Option{ff.WithEnvVarPrefix("RAIJU"), ff.WithConfigFileFlag("config"), ff.WithConfigFileParser(ff.PlainParser), ff.WithAllowMissingConfigFile(true)},
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) != 0 {

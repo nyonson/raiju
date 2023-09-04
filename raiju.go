@@ -123,7 +123,6 @@ func (r Raiju) Candidates(ctx context.Context, request CandidatesRequest) ([]Rel
 
 	// pull entire network graph from lnd
 	channelGraph, err := r.l.DescribeGraph(ctx)
-
 	if err != nil {
 		return nil, err
 	}

@@ -16,6 +16,7 @@
   - [candidates](#candidates)
   - [fees](#fees)
   - [rebalance](#rebalance)
+  - [daemon](#daemon)
 - [installation](#installation)
 - [configuration](#configuration)
 - [node](#node)
@@ -58,34 +59,7 @@ The `-liquidity-stickiness` attempts to avoid extra gossip by waiting for channe
 
 The `-liquidity-thresholds`, `-liquidity-fees`, and `-liquidity-stickiness` are global (not `fees` specific) because they are also used in the `rebalance` command to help coordinate the right amount of fees to pay in active rebalancing.
 
-The `-daemon` flag keeps keeps the process alive listening for channel updates that trigger fee updates (e.g. a channel's liquidity sinks below the low level and needs its fees updated). This is helpful when used with the `rebalance` command which *actively* balances channel liquidity. Without the daemon, there is a worst case scenario of: 1. pay a lot of fees to actively `rebalance` channel's liquidity from low to standard 2. update the channel's fees to standard 3. have a large payment immediately cancel out the rebalance and it only pays standard fees (instead of higher ones which would have canceled out the cost of the rebalance).
-
 `fees` follows the [zero-base-fee movement](http://www.rene-pickhardt.de/). I am honestly not sure if this is financially sound, but I appreciate the simpler mental model of only thinking in ppm.
-
-### systemd automation
-
-Example `fees.service`:
-
-```
-[Unit]
-Description=Monitor channel fees of LND node
-Wants=lnd.service
-After=lnd.service
-
-[Service]
-User=lightning
-Group=lightning
-Restart=always
-Environment=RAIJU_HOST=localhost:10009
-Environment=RAIJU_MAC_PATH=/home/lightning/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
-Environment=RAIJU_TLS_PATH=/home/lightning/.lnd/tls.cert
-Environment=RAIJU_LIQUIDITY_FEES=5,50,500
-Environment=RAIJU_LIQUIDITY_STICKINESS=5
-ExecStart=/usr/local/bin/raiju fees -daemon
-
-[Install]
-WantedBy=multi-user.target
-```
 
 ## rebalance
 
@@ -101,37 +75,33 @@ The command takes one argument, the maximum percentage of the channel capacity t
 
 The command will roll through channels with high liquidity and attempt to push it through channels of low liquidity. High and low are defined by the defined by the global `-liquidity-thresholds` flag. For example, if liquidity thresholds is set to `80,20`, channels with local liquidity over 80% are considered "high" and channels with local liquidity under 20% are considered "low".
 
+## daemon
+
+The `daemon` subcommand keeps the process alive listening for channel updates that trigger fee updates (e.g. a channel's liquidity sinks below the low level and needs its fees updated). It also periodically calls `rebalance` under the hood to *actively* balance channel liquidity.
+
 ### systemd automation
 
-Example `rebalance.service`:
+Example `fees.service`:
 
 ```
 [Unit]
-Description=Rebalance channels of LND node
+Description=Monitor LND node
+Wants=lnd.service
+After=lnd.service
 
 [Service]
 User=lightning
 Group=lightning
+Restart=always
 Environment=RAIJU_HOST=localhost:10009
 Environment=RAIJU_MAC_PATH=/home/lightning/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
 Environment=RAIJU_TLS_PATH=/home/lightning/.lnd/tls.cert
 Environment=RAIJU_LIQUIDITY_FEES=5,50,500
 Environment=RAIJU_LIQUIDITY_STICKINESS=5
-ExecStart=/usr/local/bin/raiju rebalance 5
-```
-
-Example `rebalance.timer`:
-
-```
-[Unit]
-Description=Rebalance channels daily with a wiggle so not run at the same time every day
-
-[Timer]
-OnCalendar=*-*-* 00:00:00
-RandomizedDelaySec=1h
+ExecStart=/usr/local/bin/raiju daemon
 
 [Install]
-WantedBy=timers.target
+WantedBy=multi-user.target
 ```
 
 # installation

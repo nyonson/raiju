@@ -321,17 +321,12 @@ func (l LndClient) SubscribeChannelUpdates(ctx context.Context) (<-chan Channels
 		for {
 			select {
 			case h := <-htlcs:
-				// only trigger on forwards events, not things like channel closes
-				if h.GetEventType() != routerrpc.HtlcEvent_FORWARD {
-					continue
-				}
-
 				channels := make(Channels, 0)
 
 				if h.GetIncomingChannelId() != 0 {
 					c, err := l.GetChannel(ctx, ChannelID(h.GetIncomingChannelId()))
 					if err != nil {
-						ec <- fmt.Errorf("cannot pull channel info on update %w", err)
+						ec <- fmt.Errorf("cannot pull %d channel info on update %w", h.GetIncomingChannelId(), err)
 						break
 					}
 					channels = append(channels, c)
@@ -340,7 +335,7 @@ func (l LndClient) SubscribeChannelUpdates(ctx context.Context) (<-chan Channels
 				if h.GetOutgoingChannelId() != 0 {
 					c, err := l.GetChannel(ctx, ChannelID(h.GetOutgoingChannelId()))
 					if err != nil {
-						ec <- fmt.Errorf("cannot pull channel info on update %w", err)
+						ec <- fmt.Errorf("cannot pull %d channel info on update %w", h.GetOutgoingChannelId(), err)
 						break
 					}
 					channels = append(channels, c)
