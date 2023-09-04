@@ -305,7 +305,7 @@ func main() {
 
 				c := lightning.NewLndClient(services, *network)
 				r := raiju.New(c, f)
-				for range time.Tick(time.Duration(4) * time.Hour) {
+				for range time.Tick(time.Duration(12) * time.Hour) {
 					func() {
 						cmdLog.Println("Rebalancing channels...")
 						rebalanced, err := r.Rebalance(ctx, 5.0, f.RebalanceFee())
