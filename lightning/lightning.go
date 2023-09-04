@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-//go:generate gotests -w -exported lightning.go
-
 // Satoshi unit of bitcoin.
 type Satoshi int64
 

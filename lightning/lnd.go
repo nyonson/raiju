@@ -22,7 +22,6 @@ import (
 	"github.com/lightningnetwork/lnd/zpay32"
 )
 
-//go:generate gotests -w -exported -excl New.* lnd.go
 //go:generate moq -stub -skip-ensure -out lnd_mock_test.go . channeler router invoicer
 
 // channeler is the minimum channel requirements from LND.
