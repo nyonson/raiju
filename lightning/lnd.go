@@ -324,6 +324,11 @@ func (l LndClient) SubscribeChannelUpdates(ctx context.Context) (<-chan Channels
 			case h := <-htlcs:
 				channels := make(Channels, 0)
 
+				// attempt to filter on forward events
+				if h.GetForwardEvent() == nil {
+					continue
+				}
+
 				if h.GetIncomingChannelId() != 0 {
 					c, err := l.GetChannel(ctx, ChannelID(h.GetIncomingChannelId()))
 					if err != nil {
