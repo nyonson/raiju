@@ -37,7 +37,7 @@ import (
 //			SendPaymentFunc: func(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.FeePPM) (lightning.Satoshi, error) {
 //				panic("mock out the SendPayment method")
 //			},
-//			SetFeesFunc: func(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error {
+//			SetFeesFunc: func(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM, maxHTLC lightning.MilliSatoshi) error {
 //				panic("mock out the SetFees method")
 //			},
 //			SubscribeChannelUpdatesFunc: func(ctx context.Context) (<-chan lightning.Channels, <-chan error, error) {
@@ -72,7 +72,7 @@ type lightningerMock struct {
 	SendPaymentFunc func(ctx context.Context, invoice lightning.Invoice, outChannelID lightning.ChannelID, lastHopPubKey lightning.PubKey, maxFee lightning.FeePPM) (lightning.Satoshi, error)
 
 	// SetFeesFunc mocks the SetFees method.
-	SetFeesFunc func(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error
+	SetFeesFunc func(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM, maxHTLC lightning.MilliSatoshi) error
 
 	// SubscribeChannelUpdatesFunc mocks the SubscribeChannelUpdates method.
 	SubscribeChannelUpdatesFunc func(ctx context.Context) (<-chan lightning.Channels, <-chan error, error)
@@ -136,6 +136,8 @@ type lightningerMock struct {
 			ChannelID lightning.ChannelID
 			// Fee is the fee argument value.
 			Fee lightning.FeePPM
+			// MaxHTLC is the maxHTLC argument value.
+			MaxHTLC lightning.MilliSatoshi
 		}
 		// SubscribeChannelUpdates holds details about calls to the SubscribeChannelUpdates method.
 		SubscribeChannelUpdates []struct {
@@ -435,15 +437,17 @@ func (mock *lightningerMock) SendPaymentCalls() []struct {
 }
 
 // SetFees calls SetFeesFunc.
-func (mock *lightningerMock) SetFees(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error {
+func (mock *lightningerMock) SetFees(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM, maxHTLC lightning.MilliSatoshi) error {
 	callInfo := struct {
 		Ctx       context.Context
 		ChannelID lightning.ChannelID
 		Fee       lightning.FeePPM
+		MaxHTLC   lightning.MilliSatoshi
 	}{
 		Ctx:       ctx,
 		ChannelID: channelID,
 		Fee:       fee,
+		MaxHTLC:   maxHTLC,
 	}
 	mock.lockSetFees.Lock()
 	mock.calls.SetFees = append(mock.calls.SetFees, callInfo)
@@ -454,7 +458,7 @@ func (mock *lightningerMock) SetFees(ctx context.Context, channelID lightning.Ch
 		)
 		return errOut
 	}
-	return mock.SetFeesFunc(ctx, channelID, fee)
+	return mock.SetFeesFunc(ctx, channelID, fee, maxHTLC)
 }
 
 // SetFeesCalls gets all the calls that were made to SetFees.
@@ -465,11 +469,13 @@ func (mock *lightningerMock) SetFeesCalls() []struct {
 	Ctx       context.Context
 	ChannelID lightning.ChannelID
 	Fee       lightning.FeePPM
+	MaxHTLC   lightning.MilliSatoshi
 } {
 	var calls []struct {
 		Ctx       context.Context
 		ChannelID lightning.ChannelID
 		Fee       lightning.FeePPM
+		MaxHTLC   lightning.MilliSatoshi
 	}
 	mock.lockSetFees.RLock()
 	calls = mock.calls.SetFees

@@ -118,6 +118,25 @@ func (l LndClient) DescribeGraph(ctx context.Context) (*Graph, error) {
 	return graph, nil
 }
 
+func getRemotePubkey(local *lndclient.Info, edge *lndclient.ChannelEdge) route.Vertex {
+	remotePubkey := edge.Node1
+	if local.IdentityPubkey == remotePubkey {
+		remotePubkey = edge.Node2
+	}
+	return remotePubkey
+}
+
+func getRemoteFeePPM(local *lndclient.Info, edge *lndclient.ChannelEdge) (FeePPM, error) {
+	if edge.Node1Policy == nil || edge.Node2Policy == nil {
+		return 0, fmt.Errorf("channel node policy is missing in channel edge: %v", edge)
+	}
+	localFee := FeePPM(edge.Node2Policy.FeeRateMilliMsat)
+	if local.IdentityPubkey == edge.Node1 {
+		localFee = FeePPM(edge.Node1Policy.FeeRateMilliMsat)
+	}
+	return localFee, nil
+}
+
 // GetChannel with ID.
 func (l LndClient) GetChannel(ctx context.Context, channelID ChannelID) (Channel, error) {
 	// returns a channel edge which doesn't have liquidity info
@@ -131,13 +150,11 @@ func (l LndClient) GetChannel(ctx context.Context, channelID ChannelID) (Channel
 		return Channel{}, err
 	}
 
-	// figure out if which node is local and which is remote
-	remotePubkey := ce.Node1
-	// FeeRateMilliMsat is a weird name
-	localFee := FeePPM(ce.Node2Policy.FeeRateMilliMsat)
-	if local.IdentityPubkey == remotePubkey {
-		remotePubkey = ce.Node2
-		localFee = FeePPM(ce.Node1Policy.FeeRateMilliMsat)
+	remotePubkey := getRemotePubkey(local, ce)
+
+	localFee, err := getRemoteFeePPM(local, ce)
+	if err != nil {
+		return Channel{}, err
 	}
 
 	remote, err := l.c.GetNodeInfo(ctx, remotePubkey, false)
@@ -197,12 +214,11 @@ func (l LndClient) ListChannels(ctx context.Context) (Channels, error) {
 			return nil, err
 		}
 
-		// figure out if which node is local and which is remote
-		remotePubkey := ce.Node1
-		localFee := FeePPM(ce.Node2Policy.FeeRateMilliMsat)
-		if local.IdentityPubkey == remotePubkey {
-			remotePubkey = ce.Node2
-			localFee = FeePPM(ce.Node1Policy.FeeRateMilliMsat)
+		remotePubkey := getRemotePubkey(local, ce)
+
+		localFee, err := getRemoteFeePPM(local, ce)
+		if err != nil {
+			return nil, err
 		}
 
 		remote, err := l.c.GetNodeInfo(ctx, remotePubkey, false)
