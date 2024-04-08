@@ -5,7 +5,7 @@
 # generate test boilerplate code including marked interface stubs and test tables for exported functions
 @generate:
   go install github.com/cweill/gotests/gotests@latest
-  go install github.com/matryer/moq@v0.3.1
+  go install github.com/matryer/moq@v0.3.4
   go generate ./...
 
 # install the executable

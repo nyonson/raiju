@@ -830,7 +830,7 @@ func TestRaiju_Fees(t *testing.T) {
 							},
 						}, nil
 					},
-					SetFeesFunc: func(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM) error {
+					SetFeesFunc: func(ctx context.Context, channelID lightning.ChannelID, fee lightning.FeePPM, maxHTLC lightning.MilliSatoshi) error {
 						return nil
 					},
 				},

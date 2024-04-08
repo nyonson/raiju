@@ -31,7 +31,7 @@ All of `raiju`'s subcommands can be listed with the global help flag, `raiju -h`
 
 List the best nodes to open a channel to from the current node. `candidates` does not automatically open any channels, that needs to be done out-of-band with a different tool such as `lncli`. `candidates` just lists suggestions and is not intended to be automated (for now...). 
 
-The current node has distance `0` to itself and distance `1` to the nodes it has channels with. A node with distance `2` has a channel with a node the current node is connected too, but no channel with the current node, and so on. "Distant Neighbors" are distant (greater than `2`) from the current node, but have a channel with the candidate. By default, only nodes with clearnet addresses are listed. TOR-only nodes tend to be unreliable due to the nature of TOR.
+The current node has distance `0` to itself and distance `1` to the nodes it has channels with. A node with distance `2` has a channel with a node the current node is connected to, but no channel with the current node, and so on. "Distant Neighbors" are distant (greater than `2`) from the current node, but have a channel with the candidate. By default, only nodes with clearnet addresses are listed. TOR-only nodes tend to be unreliable due to the nature of TOR.
 
 ```
 $ raiju candidates
@@ -43,7 +43,7 @@ Pubkey                                                              Alias       
 ...
 ```
 
-The `assume` flag allows you to see the remaining candidates and updated stats assuming channels were opened to the given nodes. This can be used to find a set of nodes to open channels too in single batch transaction in order to minimize on onchain fees.
+The `assume` flag allows you to see the remaining candidates and updated stats assuming channels were opened to the given nodes. This can be used to find a set of nodes to open channels to in a single batch transaction in order to minimize on onchain fees.
 
 From a "make money routing" perspective, theoretically, these most distant nodes with the most distant neighbor connections are good to open a channel to for some off the beaten path efficient routing vs. just connecting to the biggest node in the network. Your node could offer cheaper, better routing between two "clusters" of nodes than the biggest nodes. From a "make the network stronger in general" perspective, the hope is that this strategy creates a more decentralized network vs. everything being dependent on a handful of large hub nodes. 
 
@@ -51,7 +51,7 @@ From a "make money routing" perspective, theoretically, these most distant nodes
 
 **Passively manage channel liquidity**
 
-Set channel fees based on the channel's current liquidity. The idea here is to encourage passive channel rebalancing through fees. If a channel has a too much local liquidity (high), fees are lowered in order to encourage relatively more outbound transactions. Visa versa for a channel with too little local liquidity (low). 
+Set channel fees based on the channel's current liquidity. The idea here is to encourage passive channel rebalancing through fees. If a channel has a too much local liquidity (high), fees are lowered in order to encourage relatively more outbound transactions. _vice versa_ for a channel with too little local liquidity (low). 
 
 The global `-liquidity-thresholds` flag determines how channels are grouped into liquidity buckets, while the `-liquidity-fees` flag determines the fee settings applied to those groups. For example, if thresholds are set to `80,20` and fees set to `5,50,500`, then channels with over 80% local liquidity will have a 5 PPM fee, channels between 80% and 20% local liquidity will have a 50 PPM fee, and channels with less than 20% liquidity will have a 500 PPM fee.
 
@@ -147,4 +147,4 @@ host localhost:10009
 
 # node
 
-Are you here looking for a node to open a channel too? Well, may I offer `raiju`'s node! Could always use the inbound: [`02b6867b56ca1b6a4548b97b009152683fa366bfa1b14119c8f9992e1acacbe1c8`](https://amboss.space/node/02b6867b56ca1b6a4548b97b009152683fa366bfa1b14119c8f9992e1acacbe1c8)
+Are you here looking for a node to open a channel to? Well, may I offer `raiju`'s node! Could always use the inbound: [`02b6867b56ca1b6a4548b97b009152683fa366bfa1b14119c8f9992e1acacbe1c8`](https://amboss.space/node/02b6867b56ca1b6a4548b97b009152683fa366bfa1b14119c8f9992e1acacbe1c8)
