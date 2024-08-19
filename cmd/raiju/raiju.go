@@ -358,7 +358,7 @@ func main() {
 	}
 
 	root := &ffcli.Command{
-		ShortUsage:  "raiju [global flags] [subcommand] [subcommand flags] [subcommand args]",
+		ShortUsage:  "raiju [global flags] [command] [command flags] [command args]",
 		FlagSet:     rootFlagSet,
 		ShortHelp:   "Interactive dashboard",
 		LongHelp:    "If given no subcommand, fire up an interactive dashboard that uses the subcommands under the hood.",
