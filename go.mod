@@ -1,6 +1,6 @@
 module github.com/nyonson/raiju
 
-go 1.20
+go 1.22
 
 require (
 	github.com/btcsuite/btcd v0.24.1-0.20240123000108-62e6af035ec5
