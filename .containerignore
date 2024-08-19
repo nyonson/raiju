@@ -1,5 +1,7 @@
 .git
 .gitignore
+.direnv
+.envrc
 Dockerfile
 LICENSE
 README.md
