@@ -83,12 +83,12 @@ The `daemon` command keeps the process alive listening for channel updates that 
 
 ### systemd automation
 
-Example `fees.service`:
+Example `raiju.service`:
 
 ```
 [Unit]
-Description=Monitor LND node
-Wants=lnd.service
+Description=Raiju
+Requires=lnd.service
 After=lnd.service
 
 [Service]
