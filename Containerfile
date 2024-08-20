@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.3
 
 # Step 1 build binary
-FROM docker.io/golang:1.20.2-alpine3.17 as builder
+FROM docker.io/golang:1.22.6-alpine3.20 as builder
 
 # Set working directory
 WORKDIR /build
@@ -17,7 +17,7 @@ COPY . ./
 RUN go build ./cmd/raiju/raiju.go
 
 # Separate stage for final binary in order to minimize size of image
-FROM docker.io/alpine:3.17
+FROM docker.io/alpine:3.20
 
 WORKDIR /
 
