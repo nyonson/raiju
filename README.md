@@ -79,7 +79,7 @@ The command will roll through channels with high liquidity and attempt to push i
 
 ## daemon
 
-The `daemon` subcommand keeps the process alive listening for channel updates that trigger fee updates (e.g. a channel's liquidity sinks below the low level and needs its fees updated). It also periodically calls `rebalance` under the hood to *actively* balance channel liquidity.
+The `daemon` command keeps the process alive listening for channel updates that trigger fee updates (e.g. a channel's liquidity sinks below the low level and needs its fees updated). It also periodically calls `rebalance` under the hood to *actively* balance channel liquidity.
 
 ### systemd automation
 
@@ -92,12 +92,10 @@ Wants=lnd.service
 After=lnd.service
 
 [Service]
-User=lightning
-Group=lightning
 Restart=always
 Environment=RAIJU_HOST=localhost:10009
-Environment=RAIJU_MAC_PATH=/home/lightning/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
-Environment=RAIJU_TLS_PATH=/home/lightning/.lnd/tls.cert
+Environment=RAIJU_MAC_PATH=/home/lnd/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
+Environment=RAIJU_TLS_PATH=/home/lnd/.lnd/tls.cert
 Environment=RAIJU_LIQUIDITY_FEES=5,50,500
 Environment=RAIJU_LIQUIDITY_STICKINESS=5
 ExecStart=/usr/local/bin/raiju daemon
@@ -108,13 +106,19 @@ WantedBy=multi-user.target
 
 # installation
 
-To install from source, `raiju` requires `go` on the system. `go install` creates a `raiju` executable.
+Raiju can be installed from source, but a container and nix flake are also provided.
+
+## from source
+
+`raiju` requires `go` on the system. `go install` creates a `raiju` executable.
 
 ```
 $ go install github.com/nyonson/raiju/cmd/raiju@latest
 ```
 
-If a container is preferred, `raiju` images are published at `ghcr.io/nyonson/raiju`. 
+## container
+
+`raiju` images are published at `ghcr.io/nyonson/raiju`. 
 
 ```
 docker pull ghcr.io/nyonson/raiju:v0.7.1
@@ -131,7 +135,11 @@ docker run -it \
 ```
 
 * Ensure the tls certificate and macaroon are mounted in the container, in the above example they are both mounted to the root of the container's filesystem and then their paths are passed in as cli flags.
-* The container may need to be attached to a network depending on your network. 
+* The container may need to be attached to a network depending on your system.
+
+## nix flake 
+
+The nix flake sets up a developer shell and also builds an executable.
 
 # configuration
 
