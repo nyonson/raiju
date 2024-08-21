@@ -42,6 +42,9 @@
               gopls
               gotools
             ];
+            shellHook = ''
+              export GOPATH="$PWD/.go"
+            '';
           };
         }
       );

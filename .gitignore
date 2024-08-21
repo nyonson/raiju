@@ -1,4 +1,16 @@
-build/
+#
+# NIX
+#
 .direnv/
 result
+
+#
+# GOLANG
+#
+build/
+.go/
+
+#
+# IDEs
+#
 .vscode/
