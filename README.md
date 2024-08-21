@@ -79,7 +79,7 @@ The command will roll through channels with high liquidity and attempt to push i
 
 ## daemon
 
-This is where the magic really happens. The `daemon` command keeps the raiju process alive and listens for channel updates form LND which trigger fee updates (e.g. a channel's liquidity sinks below the low level and needs its fees updated). So as liquidity ebbs and flows, fees are instantly updated to *passively* push thigns in the right direction. The daemon process also periodically (every 12 hours) calls `rebalance` under the hood to *actively* balance liquidity to help move thigs along.
+This is where the magic really happens. The `daemon` command keeps the raiju process alive in order to listen for channel updates from LND when liquidity has shifted (e.g. a routed payment). As liquidity ebbs and flows, raiju instantly updates fees to *passively* push thigns in the right direction (e.g. a channel's liquidity sinks below the low level and needs its fees updated). The daemon process also periodically (every 12 hours) calls `rebalance` in order to *actively* balance liquidity to help move thigs along.
 
 ### systemd automation
 
