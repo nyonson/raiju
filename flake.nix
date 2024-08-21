@@ -132,7 +132,18 @@
               };
             };
 
-            environment.systemPackages = [ self.packages.${pkgs.system}.default ];
+            environment = {
+              systemPackages = [ self.packages.${pkgs.system}.default ];
+              # Set system variables so raiju command can be called easily.
+              variables = {
+                RAIJU_HOST = "${config.services.raiju.rpcHost}";
+                RAIJU_MAC_PATH = "${config.services.raiju.macaroonFile}";
+                RAIJU_TLS_PATH = "${config.services.raiju.tlsCertificateFile}";
+                RAIJU_LIQUIDITY_FEES = "${intListToString config.services.raiju.liquidityFees}";
+                RAIJU_LIQUIDITY_STICKINESS = "${toString config.services.raiju.liquidityStickiness}";
+                RAIJU_LIQUIDITY_THRESHOLDS = "${intListToString config.services.raiju.liquidityThresholds}";
+              };
+            };
           };
         };
 
