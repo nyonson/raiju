@@ -79,11 +79,11 @@ The command will roll through channels with high liquidity and attempt to push i
 
 ## daemon
 
-The `daemon` command keeps the process alive listening for channel updates that trigger fee updates (e.g. a channel's liquidity sinks below the low level and needs its fees updated). It also periodically calls `rebalance` under the hood to *actively* balance channel liquidity.
+This is where the magic really happens. The `daemon` command keeps the raiju process alive and listens for channel updates form LND which trigger fee updates (e.g. a channel's liquidity sinks below the low level and needs its fees updated). So as liquidity ebbs and flows, fees are instantly updated to *passively* push thigns in the right direction. The daemon process also periodically (every 12 hours) calls `rebalance` under the hood to *actively* balance liquidity to help move thigs along.
 
 ### systemd automation
 
-Example `raiju.service`:
+Here is an example `raiju.service` systemd unit.
 
 ```
 [Unit]
@@ -94,11 +94,12 @@ After=lnd.service
 [Service]
 Restart=always
 Environment=RAIJU_HOST=localhost:10009
-Environment=RAIJU_MAC_PATH=/home/lnd/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
-Environment=RAIJU_TLS_PATH=/home/lnd/.lnd/tls.cert
+Environment=RAIJU_MAC_PATH=/path/to/lnd/admin.macaroon
+Environment=RAIJU_TLS_PATH=/path/to/lnd/tls.cert
 Environment=RAIJU_LIQUIDITY_FEES=5,50,500
 Environment=RAIJU_LIQUIDITY_STICKINESS=5
-ExecStart=/usr/local/bin/raiju daemon
+Environment=RAIJU_LIQUIDITY_THRESHOLDS=80,20
+ExecStart=/path/to/raiju daemon
 
 [Install]
 WantedBy=multi-user.target

@@ -16,7 +16,7 @@
         in {
           default = pkgs.buildGoModule {
             pname = "raiju";
-            version = "0.10.1";
+            version = "0.11.1";
             src = ./.;
             vendorHash = "sha256-sNCEZjR+7xWVKLAOOunvNyned4c9VRebt96PhAxiByk=";
           };
