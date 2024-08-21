@@ -109,7 +109,7 @@
           };
 
           config = lib.mkIf config.services.raiju.enable {
-            systemd.services.raiju = {
+            systemd.services.raiju = lib.mkIf config.systemd.enable {
               description = "Raiju";
               wantedBy = [ "multi-user.target" ];
               # *Requires* establishes the dependency, while *after* establishes the order.
