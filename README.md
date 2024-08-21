@@ -143,7 +143,7 @@ docker run -it \
 * Ensure the tls certificate and macaroon are mounted in the container, in the above example they are both mounted to the root of the container's filesystem and then their paths are passed in as cli flags.
 * The container may need to be attached to a network depending on your system.
 
-## flake 
+## nix
 
 The nix flake sets up a developer shell and also builds an executable.
 
