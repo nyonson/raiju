@@ -51,13 +51,15 @@ From a "make money routing" perspective, theoretically, these most distant nodes
 
 **Passively manage channel liquidity**
 
-Set channel fees based on the channel's current liquidity. The idea here is to encourage passive channel rebalancing through fees. If a channel has a too much local liquidity (high), fees are lowered in order to encourage relatively more outbound transactions. _vice versa_ for a channel with too little local liquidity (low). 
+Set channel fees based on the channel's current liquidity. The idea here is to encourage passive channel rebalancing through fees. If a channel has a too much local liquidity, fees are lowered in order to encourage relatively more outbound transactions. _vice versa_ for a channel with too little local liquidity.
 
-The global `-liquidity-thresholds` flag determines how channels are grouped into liquidity buckets, while the `-liquidity-fees` flag determines the fee settings applied to those groups. For example, if thresholds are set to `80,20` and fees set to `5,50,500`, then channels with over 80% local liquidity will have a 5 PPM fee, channels between 80% and 20% local liquidity will have a 50 PPM fee, and channels with less than 20% liquidity will have a 500 PPM fee.
+There are three liquidity flags which control when and what fees are applied to channels. 
 
-The `-liquidity-stickiness` attempts to avoid extra gossip by waiting for channels to return to a healthier liquidity state before changing fees. If using the same settings as before, plus a stickiness setting of 5%, if a channel moves from 19% liquidity to 23% liquidity it will still have a 500 PPM fee. It needs to move to something better than 25% (20% + 5%) before the fee will change. The stickiness setting only applies to liquidity moving in a healthy (towards center) direction. If you are drastically changing your fee settings, you probably want to set stickiness to 0 temporarily to ensure fees are updated.
+* `Liquidity Fees` -- The feerates (in PPM) raiju applies to channels. The first option is applied to channels with too much local liquidity. The second is for balanced channels (in between the two threshold values). The third option is applied to channels with too little local liquidity
+* `Liquidity Thresholds` -- Determines how channels are grouped into liquidity buckets, while the `-liquidity-fees` flag determines the fee settings applied to those groups. For example, if thresholds are set to `80,20` and fees set to `5,50,500`, then channels with over 80% local liquidity will have a 5 PPM fee, channels between 80% and 20% local liquidity will have a 50 PPM fee, and channels with less than 20% liquidity will have a 500 PPM fee.
+* `Liquidity Stickiness` -- Attempts to avoid extra gossip by waiting for channels to return to a healthier liquidity state before changing fees. If using the same settings as before, plus a stickiness setting of 5%, if a channel moves from 19% liquidity to 23% liquidity it will still have a 500 PPM fee. It needs to move to something better than 25% (20% + 5%) before the fee will change. The stickiness setting only applies to liquidity moving in a healthy (towards center) direction. If you are drastically changing your fee settings, you probably want to set stickiness to 0 temporarily to ensure fees are updated.
 
-The `-liquidity-thresholds`, `-liquidity-fees`, and `-liquidity-stickiness` are global (not `fees` specific) because they are also used in the `rebalance` command to help coordinate the right amount of fees to pay in active rebalancing.
+The fees, thresholds, and stickiness are global settings (not specific to just the `fees` command) because they are also used in the `rebalance` command to help coordinate the right amount of fees to pay in active rebalancing.
 
 `fees` follows the [zero-base-fee movement](http://www.rene-pickhardt.de/). I am honestly not sure if this is financially sound, but I appreciate the simpler mental model of only thinking in ppm.
 
@@ -75,7 +77,7 @@ The maximum fee ppm setting defaults to the low liquidity fee setting used by th
 
 The command takes one argument, the maximum percentage of the channel capacity to attempt to rebalance.
 
-The command will roll through channels with high liquidity and attempt to push it through channels of low liquidity. High and low are defined by the defined by the global `-liquidity-thresholds` flag. For example, if liquidity thresholds is set to `80,20`, channels with local liquidity over 80% are considered "high" and channels with local liquidity under 20% are considered "low".
+The command will roll through channels with high liquidity and attempt to push it through channels of low liquidity. High and low are defined by the defined by the global liqudidity thresholds setting. For example, if liquidity thresholds is set to `80,20`, channels with local liquidity over 80% are considered "high" and channels with local liquidity under 20% are considered "low".
 
 ## daemon
 
@@ -141,6 +143,38 @@ docker run -it \
 ## nix flake 
 
 The nix flake sets up a developer shell and also builds an executable.
+
+If running NixOS, the flake can be added and a systemd service easily setup to run the raiju daemon.
+
+```
+  inputs = {
+    ...
+    raiju.url = "github:nyonson/raiju";
+    ...
+  };
+
+  outputs = { self, nixpkgs, raiju, ... }@inputs: {
+      ...
+      modules = [
+       ...
+        # Add Raiju and enable the daemon.
+        raiju.nixosModules.default
+        {
+          services.raiju = {
+            enable = true;
+            rpcHost = "localhost:10009";
+            macaroonFile = "/path/to/lnd/admin.macaroon";
+            tlsCertificateFile = "/path/to/lnd/tls.cert";
+            liquidityFees = [1 50 2500];
+            liquidityThresholds = [80 20];
+            liquidityStickiness = 10;
+          };
+        };
+        ...
+      ];
+    };
+  };
+```
 
 # configuration
 
