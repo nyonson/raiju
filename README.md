@@ -190,7 +190,3 @@ A configuration file can be provided with the `-config` flag or the default loca
 ```
 host localhost:10009
 ```
-
-# node
-
-Are you here looking for a node to open a channel to? Well, may I offer `raiju`'s node! Could always use the inbound: [`02b6867b56ca1b6a4548b97b009152683fa366bfa1b14119c8f9992e1acacbe1c8`](https://amboss.space/node/02b6867b56ca1b6a4548b97b009152683fa366bfa1b14119c8f9992e1acacbe1c8)
