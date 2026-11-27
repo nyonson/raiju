@@ -261,6 +261,18 @@ func (l LndClient) SetFees(ctx context.Context, channelID ChannelID, fee FeePPM,
 		return err
 	}
 
+	// The max HTLC may not exceed the max in-flight amount the peer allows on
+	// the channel (e.g. ACINQ allows 45% of capacity). LND rejects such an
+	// update as a failed update, which lndclient does not report, so the fee
+	// change would be silently dropped.
+	maxInFlight, err := l.maxInFlight(ctx, channelID)
+	if err != nil {
+		return err
+	}
+	if maxInFlight > 0 && maxHTLC > maxInFlight {
+		maxHTLC = maxInFlight
+	}
+
 	// opinionated policy
 	req := lndclient.PolicyUpdateRequest{
 		BaseFeeMsat:   0,
@@ -269,6 +281,23 @@ func (l LndClient) SetFees(ctx context.Context, channelID ChannelID, fee FeePPM,
 		MaxHtlcMsat:   uint64(maxHTLC),
 	}
 	return l.c.UpdateChanPolicy(ctx, req, outpoint)
+}
+
+// maxInFlight returns the max in-flight amount the remote peer allows on our
+// side of the channel, or 0 if it is unknown.
+func (l LndClient) maxInFlight(ctx context.Context, channelID ChannelID) (MilliSatoshi, error) {
+	cis, err := l.c.ListChannels(ctx, false, false)
+	if err != nil {
+		return 0, err
+	}
+
+	for _, ci := range cis {
+		if ci.ChannelID == uint64(channelID) && ci.LocalConstraints != nil {
+			return MilliSatoshi(ci.LocalConstraints.MaxPendingAmt), nil
+		}
+	}
+
+	return 0, nil
 }
 
 // AddInvoice of amount.
