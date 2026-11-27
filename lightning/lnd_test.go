@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/btcsuite/btcd/wire"
 	"github.com/lightninglabs/lndclient"
+	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/routing/route"
 )
 
@@ -203,4 +205,71 @@ func TestLndClient_ListChannels(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLndClient_SetFees(t *testing.T) {
+	const chanID = 1
+	chanPoint := "0000000000000000000000000000000000000000000000000000000000000001:0"
+
+	tests := []struct {
+		name        string
+		maxHTLC     MilliSatoshi
+		maxInFlight *lnwire.MilliSatoshi
+		wantMaxHTLC uint64
+	}{
+		{
+			name:        "max htlc below max in-flight is kept",
+			maxHTLC:     1_000_000,
+			maxInFlight: lnwireMsat(2_000_000),
+			wantMaxHTLC: 1_000_000,
+		},
+		{
+			name:        "max htlc above max in-flight is capped",
+			maxHTLC:     1_299_528_000,
+			maxInFlight: lnwireMsat(1_170_000_000),
+			wantMaxHTLC: 1_170_000_000,
+		},
+		{
+			name:        "unknown constraints keep max htlc",
+			maxHTLC:     1_000_000,
+			maxInFlight: nil,
+			wantMaxHTLC: 1_000_000,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			info := lndclient.ChannelInfo{ChannelID: chanID}
+			if tt.maxInFlight != nil {
+				info.LocalConstraints = &lndclient.ChannelConstraints{MaxPendingAmt: *tt.maxInFlight}
+			}
+
+			var got lndclient.PolicyUpdateRequest
+			l := LndClient{
+				c: &channelerMock{
+					GetChanInfoFunc: func(ctx context.Context, chanId uint64) (*lndclient.ChannelEdge, error) {
+						return &lndclient.ChannelEdge{ChannelPoint: chanPoint}, nil
+					},
+					ListChannelsFunc: func(ctx context.Context, activeOnly bool, publicOnly bool) ([]lndclient.ChannelInfo, error) {
+						return []lndclient.ChannelInfo{info}, nil
+					},
+					UpdateChanPolicyFunc: func(ctx context.Context, req lndclient.PolicyUpdateRequest, cp *wire.OutPoint) error {
+						got = req
+						return nil
+					},
+				},
+			}
+
+			if err := l.SetFees(context.Background(), chanID, FeePPM(100), tt.maxHTLC); err != nil {
+				t.Fatalf("SetFees() error = %v", err)
+			}
+			if got.MaxHtlcMsat != tt.wantMaxHTLC {
+				t.Errorf("SetFees() MaxHtlcMsat = %d, want %d", got.MaxHtlcMsat, tt.wantMaxHTLC)
+			}
+		})
+	}
+}
+
+func lnwireMsat(m uint64) *lnwire.MilliSatoshi {
+	msat := lnwire.MilliSatoshi(m)
+	return &msat
 }
